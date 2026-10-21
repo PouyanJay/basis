@@ -18,7 +18,7 @@ A workspace for comparing coding agents through your engineering needs, governan
 
 [**Open the live app →**](https://pouyanjay.github.io/basis/) · No account or API key required to explore the workspace.
 
-<img src="docs/assets/basis-overview.png" width="1200" alt="Basis evaluation overview with neutral charcoal surfaces, a violet precision star logo, and study readiness indicators" />
+<img src="docs/assets/basis-overview.png" width="1200" alt="Basis home screen with a guided first test, three evaluation stages, and simplified navigation" />
 
 <sub>A new study starts with no pilot results or preloaded vendor scores.</sub>
 
@@ -34,19 +34,16 @@ Basis brings those questions into one study. It connects an engineering profile,
 
 ## What you can do
 
-| Workspace | Purpose |
+| Area | Purpose |
 |---|---|
-| **Engineering DNA** | Describe your team and workload so comparisons reflect your engineering context. |
-| **Governance** | Track required controls for each candidate and identify failed or unverified gates. |
-| **Pilot studio** | Define tasks and acceptance criteria, then collect pilot observations. |
-| **Compare** | Explore scenario costs, including human effort, and compare available evidence. |
-| **Technology intelligence** | Inspect documented vendor capabilities with links to their sources. |
-| **Judge integrity** | Review evaluation safeguards and the independence of acceptance evidence. |
-| **Decision room** | See decision readiness and the evidence gaps that prevent a defensible recommendation. |
-| **Agent execution** | Configure supported agent runs through GitHub Actions and import their result summaries. |
-| **Benchmark library** | Discover external suites, configure SWE-bench Lite samples, and import normalized reports. |
+| **Home** | A suggested first test and a plain-language explanation of what runs where. |
+| **Set up** | Optional team context, requirements, and your own pilot tasks and observations. |
+| **Run tests** | A guided small test with repository setup, GitHub workflow handoff, and manual JSON import. External benchmarks are a separate tab. |
+| **Results** | A summary of imported agent checks, external reports, and pilot observations, with deeper comparison and review tabs. |
+| **Tool catalog** | Documented vendor capabilities and their primary sources. |
+| **Settings** | The optional local credential companion and provider configuration. |
 
-The interface pairs neutral charcoal surfaces and compact Inter typography with restrained violet accents. The precision star mark anchors the sidebar and browser icon; study readiness indicators show actual governance, task, and run counts. Layouts adapt to desktop and mobile screens. Study state is stored in your browser's local storage; it is specific to that browser and origin, with no shared database or account synchronization.
+The interface pairs neutral charcoal surfaces and compact Inter typography with restrained violet accents. The precision star mark anchors the sidebar and browser icon; the home screen introduces the evaluation workflow before showing detailed analysis. Layouts adapt to desktop and mobile screens. Study state is stored in your browser's local storage; it is specific to that browser and origin, with no shared database or account synchronization.
 
 ## Quick start
 
@@ -60,15 +57,18 @@ python3 -m http.server 8000
 
 Open **http://localhost:8000**. The frontend uses native JavaScript modules and has no build step or npm dependencies. With Node.js installed, `npm start` launches the same server.
 
-### Your first study
+### Your first test
 
-1. Describe your team and workload in **Engineering DNA**.
-2. Review each candidate's required controls in **Governance**.
-3. Define representative tasks and acceptance criteria in **Pilot studio**.
-4. Collect observations or import results from a supported execution workflow.
-5. Explore costs and evidence in **Compare**, then review readiness in **Decision room**.
+1. On **Home**, choose **Start a small test**.
+2. Enter a repository containing the Basis workflows. The page links to fork this repository if needed.
+3. Add your provider API key in that repository's GitHub Actions Secrets.
+4. Choose **Open test workflow**, then select the agent and confirm the public fixture in GitHub.
+5. After the run, download and unzip its artifact. Return to **Small test run** and import `agent-result.json`.
+6. Open **Results** to review the imported check. Automated checks remain unverified and do not establish a procurement winner.
 
-An empty or incomplete study is expected to show that no defensible winner is available.
+**What runs where:** the browser stores your evaluation; GitHub Actions executes agents; you transfer the results by importing JSON. Basis does not automatically dispatch paid jobs, monitor progress, or retrieve artifacts.
+
+For a broader team evaluation, use **Set up** to define context, requirements, and your own pilot tasks. **Run tests → External benchmarks** contains the SWE-bench Lite configuration and external report import. **Results** keeps these evidence sources separate and offers deeper pilot comparison, review quality, and decision summary tabs.
 
 ## Evidence model
 
@@ -101,7 +101,7 @@ To run the included integration task:
 1. Configure the appropriate repository **Actions Secret**. The optional local helper, `python3 scripts/credential_companion.py`, requires an authenticated GitHub CLI.
 2. Open **Actions → Run coding-agent benchmark (public fixtures only)**.
 3. Select the agent and optional model, confirm the public fixture, and start the workflow.
-4. Download `agent-result.json` from the workflow artifact and import it in **Agent execution**.
+4. Download `agent-result.json` from the workflow artifact and import it in **Run tests → Small test run**.
 
 The fixture is a small coding task for integration testing. A successful run alone does not demonstrate that one vendor is better than another. Provider credentials and compatible CLI versions are required; API usage may incur costs.
 
@@ -112,7 +112,7 @@ The [SWE-bench Lite workflow](.github/workflows/swebench-lite.yml) prepares a sh
 - Choose a percentage of the 300-task Lite test set and a reproducible seed.
 - Use the same sample across agents; 10% selects 30 tasks and 25% selects 75.
 - Configure Docker and more than 40 GB of free runner disk space.
-- Import each successful job's `basis-report.json` in **Benchmark library**.
+- Import each successful job's `basis-report.json` in **Run tests → External benchmarks**.
 
 Follow [SWEBENCH_SETUP.md](SWEBENCH_SETUP.md) for runner configuration, costs, grading semantics, and known limitations. Credentialed runs and official grading still require end-to-end validation. Terminal-Bench and SWE-bench Pro are catalog/import entries; bundled execution workflows are not provided for them.
 
@@ -161,7 +161,7 @@ python tests/ui_test.py
 
 On Linux runners, install browser system dependencies with `python -m playwright install --with-deps chromium`.
 
-The main browser check covers navigation, scenario cost editing, task creation, governance persistence, mobile overflow, responsive navigation, and page errors. Screenshots are saved to the ignored `test-results/ui/` directory.
+The main browser check covers grouped navigation, workflow handoff, configuration download, scenario cost editing, task creation, governance persistence, mobile overflow, responsive navigation, and page errors. Screenshots are saved to the ignored `test-results/ui/` directory.
 
 ### Project layout
 

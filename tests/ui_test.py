@@ -16,38 +16,57 @@ with sync_playwright() as p:
  errors=[]
  page.on('pageerror',lambda err:errors.append(str(err)))
  load()
- assert page.get_by_role("heading",name="Evaluation overview",exact=False).count()==1
+ assert page.get_by_role("heading",name="Compare coding tools, step by step.",exact=False).count()==1
  assert 'RECORDED DATA (UNVERIFIED)' in page.locator('body').inner_text()
  assert '30 pilot records' not in page.locator('body').inner_text()
  page.screenshot(path=str(SCREENSHOTS/'desktop.png'),full_page=True)
- for nav,expected in [('Engineering DNA','Engineering DNA'),('Governance','Governance gates'),('Pilot studio','Pilot studio'),('Compare','Comparison lab'),('Technology intel','Technology intelligence'),('Judge integrity','Judge integrity'),('Decision room','Decision room')]:
-  page.get_by_role('button',name=nav,exact=True).first.click()
-  assert expected in page.locator('body').inner_text(),nav
+ def navigate(section, label=None):
+  page.get_by_role('navigation',name='Main navigation').get_by_role('button',name=section,exact=True).click()
+  if label:
+   page.get_by_role('navigation',name=section+' sections').get_by_role('button',name=label,exact=True).click()
+ assert page.get_by_role('navigation',name='Main navigation').get_by_role('button').count()==6
+ for section,label,expected in [('Set up',None,'Team context'),('Set up','Requirements','Requirements'),('Set up','Tasks & observations','Tasks & observations'),('Results','Pilot comparison','Pilot comparison'),('Tool catalog',None,'Tool catalog'),('Results','Review quality','Review quality'),('Results','Decision summary','Decision summary')]:
+  navigate(section,label)
+  assert page.get_by_role('heading',name=expected,exact=True).count()==1,expected
  assert 'No defensible winner yet' in page.locator('body').inner_text()
- page.get_by_role('button',name='Compare',exact=True).first.click()
+ navigate('Results','Pilot comparison')
  before=page.locator('input[data-range="org.rate"]').input_value()
  page.locator('input[data-range="org.rate"]').fill('250')
  after=page.locator('input[data-range="org.rate"]').input_value()
  assert before!=after,('cost input did not update',before,after)
- page.get_by_role('button',name='Pilot studio',exact=True).first.click()
+ navigate('Set up','Tasks & observations')
  page.get_by_role('button',name='Task',exact=True).click()
  page.locator('.modal input[name="name"]').fill('Browser UI test task')
  page.locator('.modal input[name="acceptance"]').fill('Verified by independent tests')
  page.locator('.modal .primary').click()
  page.get_by_role('button',name='Task library').click()
  assert 'Browser UI test task' in page.locator('body').inner_text()
- page.get_by_role('button',name='Governance',exact=True).first.click()
+ navigate('Set up','Requirements')
  page.locator('select[data-gate="claude:retention"]').select_option('fail')
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
  page.evaluate('render()')
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
+ navigate('Run tests')
+ page.evaluate('window.open = (url) => { window.openedURL = url; }')
+ page.get_by_role('button',name='Open test workflow ↗',exact=True).click()
+ assert 'Enter your GitHub repository' in page.locator('#run-guidance').inner_text()
+ page.locator('#evaluation-repo').fill('example/basis')
+ page.get_by_role('button',name='Open test workflow ↗',exact=True).click()
+ assert page.evaluate('window.openedURL')=='https://github.com/example/basis/actions/workflows/agent-benchmark.yml'
+ navigate('Run tests','External benchmarks')
+ assert page.locator('#swe-repo').input_value()=='example/basis'
+ page.get_by_role('button',name='Open GitHub Actions ↗',exact=True).click()
+ assert page.evaluate('window.openedURL')=='https://github.com/example/basis/actions/workflows/swebench-lite.yml'
+ with page.expect_download() as download:
+  page.get_by_role('button',name='Download run configuration',exact=True).click()
+ assert download.value.suggested_filename=='basis-swebench-lite-run.json'
  page.set_viewport_size({'width':390,'height':844})
  page.evaluate('render()')
  page.screenshot(path=str(SCREENSHOTS/'mobile.png'),full_page=True)
  assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
  page.locator('[data-act="menu"]').first.click()
- page.get_by_role('button',name='Engineering DNA').click()
- assert 'Engineering DNA' in page.locator('body').inner_text()
+ page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Set up',exact=True).click()
+ assert page.get_by_role('heading',name='Team context',exact=True).count()==1
  assert not errors,errors
  browser.close()
-print('PLAYWRIGHT UI TESTS PASSED: navigation, scenario cost, task creation, gate persistence, mobile overflow, responsive navigation, zero page errors')
+print('PLAYWRIGHT UI TESTS PASSED: grouped navigation, workflow handoff, config download, scenario cost, task creation, gate persistence, mobile navigation, zero page errors')
