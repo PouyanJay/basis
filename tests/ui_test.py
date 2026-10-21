@@ -3,8 +3,9 @@ import json, os
 ROOT='https://basis.local/'
 from pathlib import Path
 BASE=Path(__file__).resolve().parents[1]
+SCREENSHOTS=BASE/'test-results'/'ui'
 with sync_playwright() as p:
- browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+ browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
  page=browser.new_page(viewport={'width':1440,'height':900},device_scale_factor=1)
  def load():
   core=(BASE/'core.js').read_text().replace('export const ','const ').replace('export function ','function ')
@@ -18,7 +19,7 @@ with sync_playwright() as p:
  assert page.get_by_role("heading",name="A better choice starts",exact=False).count()==1
  assert 'RECORDED DATA (UNVERIFIED)' in page.locator('body').inner_text()
  assert '30 pilot records' not in page.locator('body').inner_text()
- page.screenshot(path='/mnt/data/basis-iris-benchmarks/desktop.png',full_page=True)
+ page.screenshot(path=str(SCREENSHOTS/'desktop.png'),full_page=True)
  for nav,expected in [('Engineering DNA','Engineering DNA'),('Governance','Governance gates'),('Pilot studio','Pilot studio'),('Compare','Comparison lab'),('Technology intel','Technology intelligence'),('Judge integrity','Judge integrity'),('Decision room','Decision room')]:
   page.get_by_role('button',name=nav,exact=True).first.click()
   assert expected in page.locator('body').inner_text(),nav
@@ -42,7 +43,7 @@ with sync_playwright() as p:
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
  page.set_viewport_size({'width':390,'height':844})
  page.evaluate('render()')
- page.screenshot(path='/mnt/data/basis-iris-benchmarks/mobile.png',full_page=True)
+ page.screenshot(path=str(SCREENSHOTS/'mobile.png'),full_page=True)
  assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
  page.locator('[data-act="menu"]').first.click()
  page.get_by_role('button',name='Engineering DNA').click()
