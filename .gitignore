@@ -1,0 +1,45 @@
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# JavaScript and browser tests
+node_modules/
+playwright-report/
+test-results/
+coverage/
+dist/
+
+# Local benchmark runs and generated artifacts
+runs/
+results/
+artifacts/
+outputs/
+benchmark-results/
+benchmark-data/
+swebench-data/
+*.patch
+*.log
+
+# Editor, OS and temporary files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.tmp
+
+# Local screenshots (retain tracked, intentional docs assets only)
+*desktop.png
+*mobile.png
+screenshots/
