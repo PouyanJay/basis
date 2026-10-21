@@ -1,4 +1,4 @@
-# Credentials and local configuration
+# Secrets and local environment
 .env
 .env.*
 !.env.example
@@ -14,32 +14,33 @@ __pycache__/
 .venv/
 venv/
 
-# JavaScript and browser tests
+# Node and browser testing
 node_modules/
 playwright-report/
 test-results/
 coverage/
 dist/
 
-# Local benchmark runs and generated artifacts
+# Generated benchmark runs and artifacts
 runs/
 results/
 artifacts/
 outputs/
+evaluation-output/
 benchmark-results/
 benchmark-data/
 swebench-data/
 *.patch
 *.log
 
-# Editor, OS and temporary files
+# Editors / OS
 .DS_Store
 .idea/
 .vscode/
 *.swp
 *.tmp
 
-# Local screenshots (retain tracked, intentional docs assets only)
+# Local screenshots
 *desktop.png
 *mobile.png
 screenshots/

@@ -1,0 +1,66 @@
+name: Run coding-agent benchmark (public fixtures only)
+on:
+  workflow_dispatch:
+    inputs:
+      vendor:
+        description: 'Live coding agent (requires corresponding repository secret)'
+        type: choice
+        options: [claude, cursor, codex, opencode]
+        required: true
+      model:
+        description: 'Optional model identifier (OpenCode needs provider/model); leave blank for default'
+        type: string
+        required: false
+      confirm_public_fixture:
+        description: 'I agree to run only the preapproved public toy benchmark, not private code'
+        type: boolean
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: basis-agent-${{ github.ref }}-${{ inputs.vendor }}
+  cancel-in-progress: false
+jobs:
+  run:
+    if: inputs.confirm_public_fixture == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ (inputs.vendor == 'claude' || (inputs.vendor == 'opencode' && startsWith(inputs.model, 'anthropic/'))) && secrets.ANTHROPIC_API_KEY || '' }}
+      CURSOR_API_KEY: ${{ inputs.vendor == 'cursor' && secrets.CURSOR_API_KEY || '' }}
+      OPENAI_API_KEY: ${{ (inputs.vendor == 'codex' || (inputs.vendor == 'opencode' && startsWith(inputs.model, 'openai/'))) && secrets.OPENAI_API_KEY || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install selected official CLI
+        shell: bash
+        env:
+          VENDOR: ${{ inputs.vendor }}
+        run: |
+          set -euo pipefail
+          case "$VENDOR" in
+            claude) npm install -g @anthropic-ai/claude-code ;;
+            cursor) curl -fsSL https://cursor.com/install -o /tmp/cursor-install.sh; bash /tmp/cursor-install.sh; echo "$HOME/.local/bin" >> "$GITHUB_PATH" ;;
+            codex) npm install -g @openai/codex ;;
+            opencode) npm install -g opencode-ai ;;
+            *) exit 2 ;;
+          esac
+      - name: Run coding agent and approved independent tests
+        shell: bash
+        env:
+          VENDOR: ${{ inputs.vendor }}
+          MODEL: ${{ inputs.model }}
+        run: |
+          python3 scripts/run_agent.py --vendor "$VENDOR" --model "$MODEL" --workspace fixtures/agent_task --timeout 600 --out evaluation-output/agent-result.json
+      - name: Upload summary (NO agent output or source diff)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: basis-${{ inputs.vendor }}-${{ github.run_id }}
+          path: evaluation-output/agent-result.json
+          retention-days: 14
+          if-no-files-found: warn
