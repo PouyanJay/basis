@@ -16,7 +16,7 @@ with sync_playwright() as p:
  errors=[]
  page.on('pageerror',lambda err:errors.append(str(err)))
  load()
- assert page.get_by_role("heading",name="A better choice starts",exact=False).count()==1
+ assert page.get_by_role("heading",name="Evaluation overview",exact=False).count()==1
  assert 'RECORDED DATA (UNVERIFIED)' in page.locator('body').inner_text()
  assert '30 pilot records' not in page.locator('body').inner_text()
  page.screenshot(path=str(SCREENSHOTS/'desktop.png'),full_page=True)

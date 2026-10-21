@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="brand.svg" width="72" height="72" alt="Basis precision star logo" />
+
 # Basis
 
 **Choose AI coding tools with evidence that fits your team.**
@@ -16,7 +18,7 @@ A workspace for comparing coding agents through your engineering needs, governan
 
 [**Open the live app →**](https://pouyanjay.github.io/basis/) · No account or API key required to explore the workspace.
 
-<img src="docs/assets/basis-overview.png" width="1200" alt="Basis overview in its dark Iris interface, showing study readiness, evaluation navigation, and an empty evidence workspace" />
+<img src="docs/assets/basis-overview.png" width="1200" alt="Basis evaluation overview with neutral charcoal surfaces, a violet precision star logo, and study readiness indicators" />
 
 <sub>A new study starts with no pilot results or preloaded vendor scores.</sub>
 
@@ -44,7 +46,7 @@ Basis brings those questions into one study. It connects an engineering profile,
 | **Agent execution** | Configure supported agent runs through GitHub Actions and import their result summaries. |
 | **Benchmark library** | Discover external suites, configure SWE-bench Lite samples, and import normalized reports. |
 
-The interface supports desktop and mobile layouts. Study state is stored in your browser's local storage; it is specific to that browser and origin, with no shared database or account synchronization.
+The interface pairs neutral charcoal surfaces and compact Inter typography with restrained violet accents. The precision star mark anchors the sidebar and browser icon; study readiness indicators show actual governance, task, and run counts. Layouts adapt to desktop and mobile screens. Study state is stored in your browser's local storage; it is specific to that browser and origin, with no shared database or account synchronization.
 
 ## Quick start
 
@@ -116,7 +118,7 @@ Follow [SWEBENCH_SETUP.md](SWEBENCH_SETUP.md) for runner configuration, costs, g
 
 ### Credentials and execution boundaries
 
-Keep provider keys in Actions Secrets or the local credential companion, never in the public Pages application. The deployment publishes only the six static application files.
+Keep provider keys in Actions Secrets or the local credential companion, never in the public Pages application. The deployment publishes only the static application files and brand icon.
 
 Agent workflows execute generated code. The included public fixture is the supported smoke-test scope; proprietary or untrusted repositories require additional runner isolation and secret scoping. For substantial evaluations, use a private evaluation repository and an appropriately isolated runner. The UI opens GitHub Actions for explicit dispatch; it does not run paid jobs directly in the browser.
 
@@ -169,7 +171,8 @@ app.js                     Interface, browser state, and interactions
 core.js                    Study model, evaluation logic, and validation
 technology.js              Vendor capability catalog and source links
 benchmarks.js              Benchmark catalog and report validation
-styles.css                 Iris interface and responsive layouts
+styles.css                 Neutral workspace theme and responsive layouts
+brand.svg                  Precision star mark and browser icon
 scripts/                   Agent execution, grading, sampling, and helpers
 fixtures/agent_task/       Public coding task for integration runs
 benchmark-tests/           Checks used by the agent evaluation pipeline
@@ -182,7 +185,7 @@ docs/assets/               README screenshots
 
 In your repository, enable **Settings → Pages → Source → GitHub Actions**. Pages must be enabled before the deployment action can create a site.
 
-Every push to `main` runs the [Pages workflow](.github/workflows/pages.yml): JavaScript tests, Python sampling tests, syntax checks, and browser QA. After verification, it stages only `index.html`, `app.js`, `core.js`, `technology.js`, `benchmarks.js`, and `styles.css`, then deploys that artifact to GitHub Pages.
+Every push to `main` runs the [Pages workflow](.github/workflows/pages.yml): JavaScript tests, Python sampling tests, syntax checks, and browser QA. After verification, it stages only `index.html`, `app.js`, `core.js`, `technology.js`, `benchmarks.js`, `styles.css`, and `brand.svg`, then deploys that artifact to GitHub Pages.
 
 ## Documentation
 

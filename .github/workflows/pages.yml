@@ -23,7 +23,7 @@ jobs:
       - name: Stage public static application only
         run: |
           mkdir -p public-site
-          cp index.html app.js core.js technology.js benchmarks.js styles.css public-site/
+          cp index.html app.js core.js technology.js benchmarks.js styles.css brand.svg public-site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public-site
