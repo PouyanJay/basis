@@ -89,9 +89,117 @@ function benchmarks(){
  `<div class="panel"><div class="panelheading"><h3>Import standardized evidence</h3><span class="miniTag">Not automatically verified</span></div><p class="muted">Run the official benchmark harness externally; normalize its authentic task outcomes to the Basis v1 report schema. Importing does not certify that the claimed agent or harness was used.</p><div class="bench-actions"><button class="primary" data-act="import-benchmark">${icon('upload',16)} Import benchmark report</button><button class="secondary" data-act="download-benchmark-template">${icon('download',16)} Download report template</button></div><input type="file" id="benchmark-file" accept="application/json,.json" hidden><div class="panelnote">Scores are only comparable for exactly matching dataset revisions, harness revisions, evaluation conditions and task sets. Existing toy-agent runs are not community benchmark runs.</div></div>`+
  (rows.length?`<div class="panel"><div class="panelheading"><h3>Imported reports</h3><span class="miniTag">Self-reported · Unverified</span></div><div class="table-scroll"><table><thead><tr><th>Benchmark</th><th>Agent / model</th><th>Resolved</th><th>Tasks</th><th>Evidence</th></tr></thead><tbody>${rows.map(r=>{const sum=summarizeReport(r);return `<tr><td>${esc(BENCHMARKS.find(b=>b.id===r.benchmarkId)?.name)}</td><td>${esc(r.agent)} / ${esc(r.model)}</td><td>${sum.resolved} / ${sum.total}</td><td>${sum.total}</td><td>Unverified import</td></tr>`}).join('')}</tbody></table></div></div>`:`<div class="panel"><p class="muted">No benchmark results imported yet. No fabricated scores are shown.</p></div>`);
 }
-const views={overview,results,org,gates,pilot,compare,technology,execution,benchmarks,judge,decision:decisionPage,settings};function render(){document.title=`Basis · ${nav.find(x=>x[0]===page)?.[1]}`;$('#app').innerHTML=shell(views[page]());bind();if(page==='settings')bindCredentials();}
+// Keep native selects for form submission; use one shared, keyboard-accessible menu.
+let activeDropdown = null;
+function closeDropdown() {
+ if (!activeDropdown) return;
+ activeDropdown.menu.remove();
+ activeDropdown.trigger.setAttribute('aria-expanded','false');
+ activeDropdown.trigger.removeAttribute('aria-activedescendant');
+ activeDropdown = null;
+}
+document.addEventListener('pointerdown',e=>{
+ if(activeDropdown&&!activeDropdown.wrapper.contains(e.target)&&!activeDropdown.menu.contains(e.target))closeDropdown();
+});
+document.addEventListener('focusin',e=>{
+ if(activeDropdown&&!activeDropdown.wrapper.contains(e.target)&&!activeDropdown.menu.contains(e.target))closeDropdown();
+});
+window.addEventListener('resize',closeDropdown);
+window.addEventListener('scroll',e=>{
+ if(activeDropdown&&!activeDropdown.menu.contains(e.target))activeDropdown.position();
+},true);
+function enhanceSelects(root=document) {
+ root.querySelectorAll('select:not([data-enhanced])').forEach((select,index)=>{
+  select.dataset.enhanced='true';
+  const id=`dropdown-${root===document?'page':'modal'}-${index}`;
+  const wrapper=document.createElement('div');wrapper.className='dropdown';
+  const label=select.labels?.[0]?.cloneNode(true);
+  label?.querySelectorAll('select').forEach(node=>node.remove());
+  const name=select.getAttribute('aria-label')||label?.textContent.trim()||(select.dataset.filter?'Filter pilot runs':'Choose an option');
+  const trigger=document.createElement('button');trigger.type='button';trigger.id=id;
+  trigger.className='dropdown-trigger '+select.className;
+  trigger.setAttribute('role','combobox');trigger.setAttribute('aria-label',name);
+  trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-expanded','false');
+  trigger.setAttribute('aria-controls',id+'-list');trigger.disabled=select.disabled;
+  trigger.dataset.tone=select.classList.contains('status')?select.value:'';
+  const value=document.createElement('span');value.className='dropdown-value';value.id=id+'-value';trigger.setAttribute('aria-describedby',value.id);value.textContent=select.selectedOptions[0]?.textContent||'Choose an option';
+  trigger.append(value);trigger.insertAdjacentHTML('beforeend',icon('down',15));
+  select.before(wrapper);wrapper.append(select,trigger);select.hidden=true;
+  let search='',searchTime=0;
+  function open(direction=1) {
+   closeDropdown();
+   const options=Array.from(select.options);
+   const enabled=options.map((o,i)=>o.disabled?-1:i).filter(i=>i>=0);
+   if(!enabled.length)return;
+   const menu=document.createElement('div');menu.className='dropdown-menu';menu.id=id+'-list';
+   menu.setAttribute('role','listbox');menu.setAttribute('aria-label',name);
+   const state={wrapper,trigger,menu,index:enabled.includes(select.selectedIndex)?select.selectedIndex:enabled[direction>0?0:enabled.length-1]};
+   function highlight(index) {
+    state.index=index;
+    menu.querySelectorAll('[role=option]').forEach((node,i)=>node.classList.toggle('highlighted',i===index));
+    trigger.setAttribute('aria-activedescendant',id+'-option-'+index);
+    const item=menu.children[index];if(item){if(item.offsetTop<menu.scrollTop)menu.scrollTop=item.offsetTop;else if(item.offsetTop+item.offsetHeight>menu.scrollTop+menu.clientHeight)menu.scrollTop=item.offsetTop+item.offsetHeight-menu.clientHeight;}
+   }
+   function choose(index) {
+    if(options[index].disabled)return;
+    closeDropdown();select.value=options[index].value;
+    value.textContent=options[index].textContent;
+    trigger.dataset.tone=select.classList.contains('status')?select.value:'';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+    document.getElementById(id)?.focus({preventScroll:true});
+   }
+   options.forEach((option,index)=>{
+    const item=document.createElement('div');item.id=id+'-option-'+index;item.className='dropdown-option';
+    item.setAttribute('role','option');item.setAttribute('aria-selected',String(option.selected));
+    if(option.disabled)item.setAttribute('aria-disabled','true');
+    const text=document.createElement('span');text.textContent=option.textContent;item.append(text);
+    item.insertAdjacentHTML('beforeend',icon('check',15));
+    item.onpointermove=()=>{if(!option.disabled)highlight(index)};
+    item.onpointerdown=e=>e.preventDefault();
+    item.onclick=e=>{e.preventDefault();choose(index)};
+    menu.append(item);
+   });
+   document.body.append(menu);
+   function position(){
+   const rect=trigger.getBoundingClientRect();if(rect.bottom<0||rect.top>innerHeight){closeDropdown();return}
+   const below=innerHeight-rect.bottom-12,above=rect.top-12;
+   const upward=below<Math.min(menu.scrollHeight,220)&&above>below;
+   const available=Math.max(60,upward?above:below);
+   menu.style.maxHeight=Math.min(280,available)+'px';
+   menu.style.width=Math.min(Math.max(rect.width,190),innerWidth-24)+'px';
+   menu.style.left=Math.max(12,Math.min(rect.left,innerWidth-menu.offsetWidth-12))+'px';
+   menu.style.top=(upward?Math.max(6,rect.top-menu.offsetHeight-6):rect.bottom+6)+'px';
+   }
+   state.position=position;activeDropdown=state;state.highlight=highlight;state.choose=choose;state.enabled=enabled;position();
+   trigger.setAttribute('aria-expanded','true');highlight(state.index);
+  }
+  trigger.onclick=e=>{e.preventDefault();if(activeDropdown?.trigger===trigger)closeDropdown();else open()};
+  trigger.onkeydown=e=>{
+   const state=activeDropdown?.trigger===trigger?activeDropdown:null;
+   if(e.key==='Tab'){closeDropdown();return}
+   if(e.key==='Escape'){e.preventDefault();closeDropdown();return}
+   if(['ArrowDown','ArrowUp','Home','End','Enter',' '].includes(e.key)){
+    e.preventDefault();
+    if(!state){open(e.key==='ArrowUp'?-1:1);if(activeDropdown&&(e.key==='Home'||e.key==='End'))activeDropdown.highlight(activeDropdown.enabled[e.key==='Home'?0:activeDropdown.enabled.length-1]);return}
+    if(e.key==='Enter'||e.key===' '){state.choose(state.index);return}
+    const pos=state.enabled.indexOf(state.index);
+    const next=e.key==='Home'?0:e.key==='End'?state.enabled.length-1:(pos+(e.key==='ArrowDown'?1:-1)+state.enabled.length)%state.enabled.length;
+    state.highlight(state.enabled[next]);return;
+   }
+   if(e.key.length===1&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+    e.preventDefault();if(!state)open();
+    const current=activeDropdown;if(!current)return;
+    const now=Date.now();search=now-searchTime>700?e.key:search+e.key;searchTime=now;
+    const found=current.enabled.find(i=>select.options[i].textContent.trim().toLowerCase().startsWith(search.toLowerCase()));
+    if(found!==undefined)current.highlight(found);
+   }
+  };
+ });
+}
+
+const views={overview,results,org,gates,pilot,compare,technology,execution,benchmarks,judge,decision:decisionPage,settings};function render(){closeDropdown();document.title=`Basis · ${nav.find(x=>x[0]===page)?.[1]}`;$('#app').innerHTML=shell(views[page]());bind();enhanceSelects();if(page==='settings')bindCredentials();}
 function setPath(path,value){let [a,b]=path.split('.');if(a==='meta')s.meta[b]=value;else if(a==='org'){s.org[b]=b==='stack'?value.split(',').map(x=>x.trim()).filter(Boolean):['rate','budget','developers'].includes(b)?Number(value):value;}else if(a==='assumptions')s.assumptions[b]=Number(value);save();}
-function addModal(name,fields,callback){const wrap=document.createElement('div');wrap.className='modalback';wrap.innerHTML=`<form class="modal"><div class="modalhead"><h2>${esc(name)}</h2><button type="button" class="iconbtn" data-close aria-label="Close">${icon('cross',18)}</button></div>${fields.map(x=>`<label>${x.label}${x.type==='select'?`<select name="${x.name}">${x.options.map(v=>`<option value="${esc(v[0])}">${esc(v[1])}</option>`).join('')}</select>`:x.type==='textarea'?`<textarea name="${x.name}" required></textarea>`:`<input name="${x.name}" type="${x.type||'text'}" ${x.required===false?'':'required'} ${x.min!=null?`min="${x.min}"`:''} value="${esc(x.value??'')}">`}</label>`).join('')}<div class="modalbuttons"><button type="button" data-close class="secondary">Cancel</button><button class="primary" type="submit">Save</button></div></form>`;document.body.append(wrap);wrap.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>wrap.remove());wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};wrap.querySelector('form').onsubmit=e=>{e.preventDefault();const obj=Object.fromEntries(new FormData(e.target));callback(obj);wrap.remove();save();render();};wrap.querySelector('input,select,textarea')?.focus();}
+function addModal(name,fields,callback){const wrap=document.createElement('div');wrap.className='modalback';wrap.innerHTML=`<form class="modal"><div class="modalhead"><h2>${esc(name)}</h2><button type="button" class="iconbtn" data-close aria-label="Close">${icon('cross',18)}</button></div>${fields.map(x=>`<label>${x.label}${x.type==='select'?`<select name="${x.name}">${x.options.map(v=>`<option value="${esc(v[0])}">${esc(v[1])}</option>`).join('')}</select>`:x.type==='textarea'?`<textarea name="${x.name}" required></textarea>`:`<input name="${x.name}" type="${x.type||'text'}" ${x.required===false?'':'required'} ${x.min!=null?`min="${x.min}"`:''} value="${esc(x.value??'')}">`}</label>`).join('')}<div class="modalbuttons"><button type="button" data-close class="secondary">Cancel</button><button class="primary" type="submit">Save</button></div></form>`;document.body.append(wrap);enhanceSelects(wrap);wrap.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{closeDropdown();wrap.remove()});wrap.onclick=e=>{if(e.target===wrap){closeDropdown();wrap.remove()}};wrap.querySelector('form').onsubmit=e=>{e.preventDefault();const obj=Object.fromEntries(new FormData(e.target));callback(obj);wrap.remove();save();render();};wrap.querySelector('input:not([hidden]),button[role=combobox],textarea')?.focus();}
 function act(a,el){if(a==='open-fixture-actions'||a==='open-run-secrets'){
  const repo=$('#evaluation-repo').value.trim();const guidance=$('#run-guidance');
  if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)){guidance.textContent='Enter your GitHub repository above in owner/repository format.';$('#evaluation-repo').focus();return}

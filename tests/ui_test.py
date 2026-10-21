@@ -42,10 +42,25 @@ with sync_playwright() as p:
  page.get_by_role('button',name='Task library').click()
  assert 'Browser UI test task' in page.locator('body').inner_text()
  navigate('Set up','Requirements')
- page.locator('select[data-gate="claude:retention"]').select_option('fail')
+ page.locator('select[data-gate="claude:retention"]').locator('..').get_by_role('combobox').click()
+ page.get_by_role('option',name='× Fail',exact=True).click()
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
  page.evaluate('render()')
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
+ navigate('Set up')
+ risk=page.get_by_role('combobox',name='Risk profile',exact=True)
+ risk.focus()
+ risk.press('ArrowDown')
+ risk.press('Home')
+ risk.press('ArrowDown')
+ risk.press('Enter')
+ assert page.locator('select[data-path="org.risk"]').input_value()=='medium'
+ assert page.get_by_role('combobox',name='Risk profile',exact=True).inner_text()=='Standard governance'
+ risk=page.get_by_role('combobox',name='Risk profile',exact=True)
+ risk.click()
+ risk.press('Escape')
+ assert page.get_by_role('listbox').count()==0
+ assert risk.get_attribute('aria-expanded')=='false'
  navigate('Run tests')
  page.evaluate('window.open = (url) => { window.openedURL = url; }')
  page.get_by_role('button',name='Open test workflow ↗',exact=True).click()
@@ -67,6 +82,10 @@ with sync_playwright() as p:
  page.locator('[data-act="menu"]').first.click()
  page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Set up',exact=True).click()
  assert page.get_by_role('heading',name='Team context',exact=True).count()==1
+ page.get_by_role('combobox',name='Risk profile',exact=True).click()
+ assert page.get_by_role('listbox').is_visible()
+ page.get_by_role('option',name='Experimental',exact=True).click()
+ assert page.locator('select[data-path="org.risk"]').input_value()=='low'
  assert not errors,errors
  browser.close()
 print('PLAYWRIGHT UI TESTS PASSED: grouped navigation, workflow handoff, config download, scenario cost, task creation, gate persistence, mobile navigation, zero page errors')
