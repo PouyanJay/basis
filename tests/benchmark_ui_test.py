@@ -11,7 +11,8 @@ with sync_playwright() as p:
  script='\n'.join([read_mod('core.js'),read_mod('technology.js'),read_mod('benchmarks.js'),app])
  page.set_content('<html><head><style>'+(BASE/'styles.css').read_text()+'</style></head><body><div id="app"></div><script>const memory={};Object.defineProperty(window,"localStorage",{value:{getItem:k=>memory[k]??null,setItem:(k,v)=>memory[k]=v}});</script><script>'+script+'</script></body></html>')
  page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Results',exact=True).click()
- page.get_by_role('button',name='Imported benchmark reports',exact=True).click()
+ # Exercise the standalone report view; hosted Results now guides users to the local app.
+ page.evaluate("page='benchmarks';render()")
  assert page.get_by_role('heading',name='External benchmarks').count()==1
  assert page.get_by_text('SWE-bench Lite').count()>=1
  assert page.get_by_text('Terminal-Bench 2.1').count()>=1

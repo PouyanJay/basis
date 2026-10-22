@@ -44,7 +44,9 @@ with sync_playwright() as p:
  assert page.get_by_role('dialog').get_by_role('heading',name='Fair testing guide').is_visible()
  page.get_by_role('dialog').get_by_role('button',name='Got it').click()
  navigate('Run evaluation')
- assert page.locator('#start-evaluation').is_disabled()
+ assert page.locator('#start-evaluation').count()==0
+ assert page.get_by_role('heading',name='Continue locally',exact=True).is_visible()
+ assert page.locator('.stage-navigation,.connection-strip').count()==0
  navigate('Set up','Tasks')
  assert page.locator('.tabs').count()==0
  assert 'Browser UI test task' in page.locator('body').inner_text()
@@ -94,14 +96,17 @@ with sync_playwright() as p:
  assert page.get_by_role('listbox').count()==0
  assert risk.get_attribute('aria-expanded')=='false'
  navigate('Run evaluation')
- assert page.locator('#start-evaluation').is_disabled()
+ assert page.locator('#start-evaluation').count()==0
+ assert page.get_by_role('heading',name='Continue locally',exact=True).is_visible()
+ assert page.locator('.stage-navigation,.connection-strip').count()==0
  assert page.locator('[data-act="open-fixture-actions"]').count()==0
  navigate('Set up','Services & criteria')
  assert page.get_by_role('heading',name='Services & criteria',exact=True).is_visible()
  assert page.locator('[data-local-key]').count()>=1
  navigate('Results')
- page.get_by_role('button',name='Imported benchmark reports',exact=True).click()
- assert page.get_by_role('heading',name='External benchmarks',exact=True).is_visible()
+ assert page.get_by_role('heading',name='Continue locally',exact=True).is_visible()
+ assert page.locator('.stage-navigation,.connection-strip,#evaluation-history').count()==0
+ page.screenshot(path=str(SCREENSHOTS/'hosted-results-desktop.png'))
  page.set_viewport_size({'width':390,'height':844})
  page.evaluate('render()')
  page.screenshot(path=str(SCREENSHOTS/'mobile.png'),full_page=True)

@@ -81,6 +81,7 @@ try:
   page.get_by_role('combobox',name='Codex model',exact=True).click()
   page.get_by_role('option',name='Provider model · returned-model-v1',exact=True).click()
   nav('Run evaluation')
+  assert page.locator('.stage-navigation,.connection-strip').count()==0
   page.locator('#evaluation-consent').check();assert page.locator('#start-evaluation').is_disabled()
   nav('Set up','Services & criteria')
   page.locator('[data-local-key="ANTHROPIC_API_KEY"]').fill('test-only-second-key')
@@ -107,6 +108,7 @@ try:
   page.locator('.modal [name="acceptance"]').fill('Return hello')
   page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
   nav('Run evaluation')
+  assert page.locator('.stage-navigation,.connection-strip').count()==0
   page.locator('#benchmark-pack-path').fill(str(pack))
   page.locator('#add-benchmark-pack').click()
   page.locator('[data-remove-pack]').wait_for()

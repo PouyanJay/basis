@@ -687,3 +687,16 @@ textarea:focus, select:focus,
 .model-provider{display:block;max-width:320px;font-size:12px;color:var(--soft);margin-bottom:20px}
 .model-provider .dropdown{margin-top:8px}
 @media(max-width:800px){.service-config-fields{grid-template-columns:1fr}}
+
+/* Hosted execution and results share one focused local-app handoff. */
+.workspace.local-required-workspace{display:flex;align-items:center;justify-content:center}
+.local-required{width:100%;max-width:420px;padding:64px 0;text-align:center}
+.local-required-icon{display:inline-flex;color:var(--soft);margin-bottom:18px}
+.local-required h1{font-size:28px;line-height:1.25;letter-spacing:-.6px;margin:0 0 12px}
+.local-required>p{color:var(--soft);font-size:14px;line-height:1.7;margin:0 0 24px}
+.local-required>.primary{display:inline-flex;align-items:center;gap:10px}
+.local-required>.inlinebtn{display:block;margin:18px auto 0}
+.local-required #handoff-feedback{font-size:12px;margin:18px 0 0}
+.local-required #handoff-feedback:empty{display:none}
+
+.local-required-main{min-height:100svh}

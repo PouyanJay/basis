@@ -49,6 +49,8 @@ with sync_playwright() as p:
  assert page.locator('[data-config-service="codex"] [data-key-status]').text_content()=='Ready to transfer'
  # An unsaved visible entry also goes with the explicit handoff.
  page.get_by_label('Claude Code API key',exact=True).fill('test-only-handoff-anthropic')
+ page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Run evaluation',exact=True).click()
+ assert page.locator('.stage-navigation,.connection-strip,#start-evaluation').count()==0
  with context.expect_page() as new_page:page.get_by_role('button',name='Continue locally',exact=True).click()
  local=new_page.value
  local.get_by_role('heading',name='Services & criteria',exact=True).wait_for()
