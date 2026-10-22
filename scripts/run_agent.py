@@ -26,9 +26,12 @@ commands={
  'claude':['claude','-p',prompt,'--permission-mode','bypassPermissions'],
  'cursor':['cursor-agent','-p','--force','--output-format','text',prompt],
  'codex':['codex','exec','--dangerously-bypass-approvals-and-sandbox' if os.environ.get('BASIS_ISOLATED_RUNNER')=='1' else '--full-auto',prompt],
- 'opencode':['opencode','run','--standalone','--agent','build',prompt]
+ 'opencode':['opencode','run','--pure','--agent','build',prompt]
 }
 cmd=commands[args.vendor][:]
+if os.environ.get('BASIS_ISOLATED_RUNNER')=='1':
+  if args.vendor=='opencode': cmd.insert(2,'--auto')
+  if args.vendor=='cursor': cmd.insert(2,'--trust')
 if args.model and args.vendor=='cursor': cmd[2:2]=['--model',args.model]
 if args.model and args.vendor=='opencode': cmd[2:2]=['--model',args.model]
 if args.model and args.vendor=='claude': cmd[2:2]=['--model',args.model]
