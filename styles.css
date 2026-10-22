@@ -752,3 +752,10 @@ textarea:focus, select:focus,
 .run-progress:has(.run-idle){display:none}.run-queue{max-height:340px;overflow:auto}
 .run-phases li:not(:last-child)::after{content:'';height:1px;background:var(--line);flex:1;margin:0 16px}
 @media(max-width:600px){.run-phases li:not(:last-child)::after{display:none}}
+
+.run-readiness-row{display:flex;align-items:center;gap:18px;padding:18px 0;margin-bottom:24px;border-bottom:1px solid var(--line);font-size:14px}
+.run-readiness-row[hidden]{display:none}
+.run-readiness-row #evaluation-readiness{border:0;padding:0;gap:12px;min-width:0}
+.run-setup-summary{color:var(--soft);overflow-wrap:anywhere}
+.run-readiness-row>button{margin-left:auto;flex-shrink:0}
+@media(max-width:600px){.run-readiness-row{flex-wrap:wrap;gap:12px}.run-readiness-row #evaluation-readiness{flex-basis:100%}.run-setup-summary{flex:1}}
