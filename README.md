@@ -37,9 +37,9 @@ Basis brings those questions into one study. It connects an engineering profile,
 | Area | Purpose |
 |---|---|
 | **Home** | A suggested first test and a plain-language explanation of what runs where. |
-| **Set up** | Optional team context, requirements, and your own pilot tasks and observations. |
-| **Run tests** | A guided small test with repository setup, GitHub workflow handoff, and manual JSON import. External benchmarks are a separate tab. |
-| **Results** | A summary of imported agent checks, external reports, and pilot observations, with deeper comparison and review tabs. |
+| **Set up** | Team context, service selection, requirements, and task definitions with acceptance criteria. |
+| **Run tests** | Run the included GitHub test, record attempts from your own tasks, or configure external benchmarks. |
+| **Results** | Browse recorded pilot results, compare services, and review imported agent checks and external reports. |
 | **Tool catalog** | Documented vendor capabilities and their primary sources. |
 | **Settings** | The optional local credential companion and provider configuration. |
 
@@ -68,7 +68,7 @@ Open **http://localhost:8000**. The frontend uses native JavaScript modules and 
 
 **What runs where:** the browser stores your evaluation; GitHub Actions executes agents; you transfer the results by importing JSON. Basis does not automatically dispatch paid jobs, monitor progress, or retrieve artifacts.
 
-For a broader team evaluation, use **Set up** to define context, requirements, and your own pilot tasks. **Run tests → External benchmarks** contains the SWE-bench Lite configuration and external report import. **Results** keeps these evidence sources separate and offers deeper pilot comparison, review quality, and decision summary tabs.
+For a broader team evaluation, use **Set up → Tasks** to define tasks and acceptance criteria. Perform the tasks with your selected services outside Basis, then use **Run tests → Record a result** to log each attempt, including failures, human effort, usage cost, and evidence. Saved attempts appear under **Results → Pilot results**. The **Fair testing guide** is available from Help, Tasks, and Record a result. **Run tests → External benchmarks** contains the SWE-bench Lite configuration and external report import. **Results** keeps these evidence sources separate and offers deeper pilot comparison, review quality, and decision summary tabs.
 
 ## Evidence model
 

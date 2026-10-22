@@ -25,7 +25,7 @@ with sync_playwright() as p:
   if label:
    page.get_by_role('navigation',name=section+' sections').get_by_role('button',name=label,exact=True).click()
  assert page.get_by_role('navigation',name='Main navigation').get_by_role('button').count()==6
- for section,label,expected in [('Set up',None,'Team context'),('Set up','Requirements','Requirements'),('Set up','Tasks & observations','Tasks & observations'),('Results','Pilot comparison','Pilot comparison'),('Tool catalog',None,'Tool catalog'),('Results','Review quality','Review quality'),('Results','Decision summary','Decision summary')]:
+ for section,label,expected in [('Set up',None,'Team context'),('Set up','Requirements','Requirements'),('Set up','Tasks','Tasks'),('Results','Pilot comparison','Pilot comparison'),('Tool catalog',None,'Tool catalog'),('Results','Review quality','Review quality'),('Results','Decision summary','Decision summary')]:
   navigate(section,label)
   assert page.get_by_role('heading',name=expected,exact=True).count()==1,expected
  assert 'No defensible winner yet' in page.locator('body').inner_text()
@@ -34,13 +34,28 @@ with sync_playwright() as p:
  page.locator('input[data-range="org.rate"]').fill('250')
  after=page.locator('input[data-range="org.rate"]').input_value()
  assert before!=after,('cost input did not update',before,after)
- navigate('Set up','Tasks & observations')
- page.get_by_role('button',name='Task',exact=True).click()
+ navigate('Set up','Tasks')
+ page.get_by_role('button',name='Add task',exact=True).click()
  page.locator('.modal input[name="name"]').fill('Browser UI test task')
  page.locator('.modal input[name="acceptance"]').fill('Verified by independent tests')
  page.locator('.modal .primary').click()
- page.get_by_role('button',name='Task library').click()
  assert 'Browser UI test task' in page.locator('body').inner_text()
+ assert page.locator('[data-act="add-run"]').count()==0
+ page.get_by_role('button',name='Fair testing guide',exact=True).click()
+ assert page.get_by_role('dialog').get_by_role('heading',name='Fair testing guide').is_visible()
+ page.get_by_role('dialog').get_by_role('button',name='Got it').click()
+ navigate('Run tests','Record a result')
+ page.get_by_role('button',name='Record result',exact=True).click()
+ page.locator('.modal [name="notes"]').fill('Reviewed against acceptance criteria')
+ page.locator('.modal [name="evidence"]').fill('https://example.com/pull/1')
+ page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
+ assert page.get_by_role('heading',name='Pilot results',exact=True).is_visible()
+ assert 'Browser UI test task' in page.locator('body').inner_text()
+ assert page.get_by_role('navigation',name='Results sections').is_visible()
+ navigate('Set up','Tasks')
+ assert page.locator('.tabs').count()==0
+ assert 'Browser UI test task' in page.locator('body').inner_text()
+
  navigate('Set up','Requirements')
  page.locator('select[data-gate="claude:retention"]').locator('..').get_by_role('combobox').click()
  page.get_by_role('option',name='Fail',exact=True).click()
