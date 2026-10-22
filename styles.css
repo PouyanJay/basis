@@ -602,3 +602,9 @@ textarea:focus, select:focus,
  .service-options { grid-template-columns: 1fr; }
 }
 .message-dialog #message-body { white-space: pre-line; }
+
+/* Keep standalone empty states separate from the next card. */
+.workspace > .empty { margin-bottom: 20px; }
+.taskgrid:empty { display: none; }
+/* Prerequisites inside a card are content sections, not nested cards. */
+.panel > .empty { margin: 20px 0; padding: 20px 0 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
