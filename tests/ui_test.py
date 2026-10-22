@@ -12,7 +12,7 @@ with sync_playwright() as p:
   app='\n'.join(line for line in (BASE/'app.js').read_text().splitlines() if not line.startswith('import '))
   tech=(BASE/'technology.js').read_text().replace('export const ','const ').replace('export function ','function ') + '\n' + (BASE/'benchmarks.js').read_text().replace('export const ','const ').replace('export function ','function ')
   style=(BASE/'styles.css').read_text().split('\n',1)[1]
-  page.set_content('<!doctype html><html><head><style>'+style+'</style></head><body><div id="app"></div><script>window.__testStorage={};Object.defineProperty(window,"localStorage",{value:{getItem:k=>window.__testStorage[k]??null,setItem:(k,v)=>window.__testStorage[k]=v},configurable:true});</script><script>'+core+'\n'+tech+'\n'+app+'</script></body></html>',wait_until='load')
+  page.set_content('<!doctype html><html><head><style>'+style+'</style></head><body><div id="app"></div><script>window.__testStorage={};Object.defineProperty(window,"localStorage",{value:{getItem:k=>window.__testStorage[k]??null,setItem:(k,v)=>window.__testStorage[k]=v,removeItem:k=>delete window.__testStorage[k]},configurable:true});</script><script>'+core+'\n'+tech+'\n'+app+'</script></body></html>',wait_until='load')
  errors=[]
  page.on('pageerror',lambda err:errors.append(str(err)))
  load()
@@ -86,6 +86,18 @@ with sync_playwright() as p:
  assert page.get_by_role('listbox').is_visible()
  page.get_by_role('option',name='Experimental',exact=True).click()
  assert page.locator('select[data-path="org.risk"]').input_value()=='low'
+ # Reset clears every evaluation store, but not unrelated origin data.
+ page.evaluate("localStorage.setItem('unrelated-setting','keep');localStorage.setItem('basis-latest-agent-result',JSON.stringify({candidate:'codex'}));localStorage.setItem('basis-community-benchmark-imports','[]')")
+ page.once('dialog',lambda dialog:dialog.dismiss())
+ page.locator('[data-act="menu"]').first.click()
+ page.get_by_role('button',name='Reset local evaluation',exact=True).click()
+ assert page.evaluate("localStorage.getItem('basis-latest-agent-result')") is not None
+ page.once('dialog',lambda dialog:dialog.accept())
+ page.get_by_role('button',name='Reset local evaluation',exact=True).click()
+ assert page.get_by_role('heading',name='Compare coding tools, step by step.',exact=True).count()==1
+ assert page.evaluate("s.tasks.length===0 && s.runs.length===0")
+ assert page.evaluate("EVALUATION_KEYS.filter(key=>key!==KEY).every(key=>localStorage.getItem(key)===null)")
+ assert page.evaluate("localStorage.getItem('unrelated-setting')")=='keep'
  assert not errors,errors
  browser.close()
 print('PLAYWRIGHT UI TESTS PASSED: grouped navigation, workflow handoff, config download, scenario cost, task creation, gate persistence, mobile navigation, zero page errors')
