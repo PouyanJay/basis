@@ -40,7 +40,7 @@ try:
   def nav(section,label=None):
    page.get_by_role('navigation',name='Main navigation').get_by_role('button',name=section,exact=True).click()
    if label:page.get_by_role('navigation',name=section+' sections').get_by_role('button',name=label,exact=True).click()
-  nav('Set up','Requirements')
+  nav('Set up','Services & criteria')
   for name in ['Cursor','Devin','OpenCode']:page.get_by_role('button',name=f'Remove {name} from evaluation',exact=True).click()
   assert page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Credentials',exact=True).count()==0
   nav('Settings')
@@ -49,11 +49,11 @@ try:
   page.wait_for_function('document.querySelector(\'[data-key-status="OPENAI_API_KEY"]\').textContent==="Configured"')
   assert page.locator('[data-local-key="OPENAI_API_KEY"]').input_value()==''
   assert 'test-only-key-never-real' not in page.evaluate('JSON.stringify(localStorage)')
-  nav('Set up','Requirements')
+  nav('Set up','Services & criteria')
   page.wait_for_function('document.querySelector(\'[data-key-status="OPENAI_API_KEY"]\').textContent==="Configured"')
   nav('Run evaluation')
   page.locator('#evaluation-consent').check();assert page.locator('#start-evaluation').is_disabled()
-  nav('Set up','Requirements')
+  nav('Set up','Services & criteria')
   page.locator('[data-local-key="ANTHROPIC_API_KEY"]').fill('test-only-second-key')
   page.locator('[data-save-local="ANTHROPIC_API_KEY"]').click()
   page.wait_for_function('document.querySelector(\'[data-key-status="ANTHROPIC_API_KEY"]\').textContent==="Configured"')

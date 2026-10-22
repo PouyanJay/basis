@@ -25,7 +25,7 @@ with sync_playwright() as p:
   if label:
    page.get_by_role('navigation',name=section+' sections').get_by_role('button',name=label,exact=True).click()
  assert page.get_by_role('navigation',name='Main navigation').get_by_role('button').count()==6
- for section,label,expected in [('Set up',None,'Team context'),('Set up','Requirements','Requirements'),('Set up','Tasks','Tasks'),('Tool catalog',None,'Tool catalog')]:
+ for section,label,expected in [('Set up',None,'Team context'),('Set up','Services & criteria','Services & criteria'),('Set up','Tasks','Tasks'),('Tool catalog',None,'Tool catalog')]:
   navigate(section,label)
   assert page.get_by_role('heading',name=expected,exact=True).count()==1,expected
  navigate('Set up','Tasks')
@@ -49,7 +49,7 @@ with sync_playwright() as p:
  assert page.locator('.tabs').count()==0
  assert 'Browser UI test task' in page.locator('body').inner_text()
 
- navigate('Set up','Requirements')
+ navigate('Set up','Services & criteria')
  page.locator('select[data-gate="claude:retention"]').locator('..').get_by_role('combobox').click()
  page.get_by_role('option',name='Fail',exact=True).click()
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
@@ -89,8 +89,8 @@ with sync_playwright() as p:
  navigate('Run evaluation')
  assert page.locator('#start-evaluation').is_disabled()
  assert page.locator('[data-act="open-fixture-actions"]').count()==0
- navigate('Set up','Requirements')
- assert page.get_by_role('heading',name='Requirements',exact=True).is_visible()
+ navigate('Set up','Services & criteria')
+ assert page.get_by_role('heading',name='Services & criteria',exact=True).is_visible()
  assert page.locator('[data-local-key]').count()>=1
  navigate('Results')
  page.get_by_role('button',name='Imported benchmark reports',exact=True).click()

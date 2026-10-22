@@ -33,7 +33,7 @@ with sync_playwright() as p:
  def nav(page,label):
   page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Set up',exact=True).click()
   page.get_by_role('navigation',name='Set up sections').get_by_role('button',name=label,exact=True).click()
- nav(page,'Requirements')
+ nav(page,'Services & criteria')
  for name in ['Cursor','Devin','OpenCode']:page.get_by_role('button',name=f'Remove {name} from evaluation',exact=True).click()
  page.get_by_label('Codex model',exact=True).fill('test-model')
  page.get_by_label('Codex model',exact=True).blur()
@@ -45,13 +45,13 @@ with sync_playwright() as p:
  page.locator('.modal [name="name"]').fill('Transferred task')
  page.locator('.modal [name="acceptance"]').fill('Meets acceptance criteria')
  page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
- nav(page,'Requirements')
+ nav(page,'Services & criteria')
  assert page.locator('[data-config-service="codex"] [data-key-status]').text_content()=='Ready to transfer'
  # An unsaved visible entry also goes with the explicit handoff.
  page.get_by_label('Claude Code API key',exact=True).fill('test-only-handoff-anthropic')
  with context.expect_page() as new_page:page.get_by_role('button',name='Continue locally',exact=True).click()
  local=new_page.value
- local.get_by_role('heading',name='Requirements',exact=True).wait_for()
+ local.get_by_role('heading',name='Services & criteria',exact=True).wait_for()
  local.wait_for_function('document.querySelectorAll("[data-key-status].pass").length === 2')
  assert local.locator('[data-service-model="codex"]').input_value()=='test-model'
  assert keys=={'OPENAI_API_KEY':'test-only-handoff-openai','ANTHROPIC_API_KEY':'test-only-handoff-anthropic'}

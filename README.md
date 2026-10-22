@@ -61,15 +61,15 @@ Open **http://127.0.0.1:8765/**. On Windows, use `.venv\Scripts\python.exe` inst
 
 ### Your first evaluation
 
-1. **Set up:** describe team context, select services and models, assess requirements, and define tasks with acceptance criteria. A task can start empty or from a local source folder. Optionally supply an independent checks folder and command.
-2. **Requirements:** set the model and key in each selected service row. Keys saved in Settings already show **Configured**.
+1. **Set up:** describe team context, define tasks with acceptance criteria, then select services, models, and evaluation criteria. A task can start empty or from a local source folder. Optionally supply an independent checks folder and command.
+2. **Services & criteria:** set the model and key in each selected service row. Keys saved in Settings already show **Configured**.
 3. **Run evaluation:** optionally add HumanEval tasks or local benchmark packs, set a time limit, review readiness, authorize provider usage, and press **Run evaluation**.
 4. Watch progress or stop the run. The first run builds the agent image and may take several minutes.
 5. **Results:** select a saved evaluation, inspect each attempt and its local files, record human acceptance/effort/cost, and compare services. Benchmark evidence can be included or excluded without deleting it.
 
 The runner freezes your setup and input files before starting. Every service gets the same initial source in its own workspace. Editing setup afterward does not change an existing evaluation. Run history survives browser reloads and companion restarts; unfinished runs become interrupted.
 
-No GitHub execution workflow, repository secret, or artifact transfer is required. The hosted site is a setup/exploration interface; automatic execution requires opening the local companion. Use **Continue locally** at the end of Requirements or Tasks to transfer your setup to the running local companion. Hosted-page keys are held only in memory, sent directly to the local window, and saved in the OS credential store. Reloading the hosted page clears prepared keys. The local app asks before replacing an existing populated setup.
+No GitHub execution workflow, repository secret, or artifact transfer is required. The hosted site is a setup/exploration interface; automatic execution requires opening the local companion. Use **Continue locally** at the end of Services & criteria to transfer your setup to the running local companion. Hosted-page keys are held only in memory, sent directly to the local window, and saved in the OS credential store. Reloading the hosted page clears prepared keys. The local app asks before replacing an existing populated setup.
 
 Team context and acceptance criteria guide agent prompts. Requirements, workload mix, and decision priorities are preserved for review. Governance requirements are not automatically certified by coding tests. Provider costs and human effort remain unknown until explicitly recorded; Basis does not enforce a monetary budget.
 
@@ -99,7 +99,7 @@ The local runner supports these adapters:
 | Codex | `codex` | `OPENAI_API_KEY` |
 | OpenCode | `opencode` | `OPENAI_API_KEY` for `openai/model`, or `ANTHROPIC_API_KEY` for `anthropic/model` |
 
-Each supported service attempts every selected task sequentially. Unsupported services block automatic execution with an actionable readiness message; they are never silently omitted. Set an explicit model in **Set up → Requirements** for reproducibility. An empty model uses the CLI default, which is labeled as unpinned; OpenCode requires `openai/model` or `anthropic/model`.
+Each supported service attempts every selected task sequentially. Unsupported services block automatic execution with an actionable readiness message; they are never silently omitted. Set an explicit model in **Set up → Services & criteria** for reproducibility. An empty model uses the CLI default, which is labeled as unpinned; OpenCode requires `openai/model` or `anthropic/model`.
 
 ### Credentials and execution boundaries
 
