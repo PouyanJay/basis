@@ -53,6 +53,9 @@ with sync_playwright() as p:
  assert page.locator('.stage-navigation,.connection-strip,#start-evaluation').count()==0
  with context.expect_page() as new_page:page.get_by_role('button',name='Continue locally',exact=True).click()
  local=new_page.value
+ assert local is not page
+ assert page.url==HOSTED+'/basis/'
+ assert not page.is_closed()
  local.get_by_role('heading',name='Services & criteria',exact=True).wait_for()
  local.wait_for_function('document.querySelectorAll("[data-key-status].pass").length === 2')
  local.get_by_role('combobox',name='Codex model',exact=True).click()
@@ -62,7 +65,7 @@ with sync_playwright() as p:
  assert 'test-only-handoff' not in local.evaluate('JSON.stringify(localStorage)')
  assert 'test-only-handoff' not in page.evaluate('JSON.stringify(localStorage)')
  assert all('test-only-handoff' not in url for url in requests)
- page.get_by_text('Setup transferred. Continue in the local app.',exact=True).wait_for()
+ page.get_by_text('Setup transferred. Continue in the local tab.',exact=True).wait_for()
  nav(local,'Tasks');assert local.get_by_text('Transferred task',exact=True).is_visible()
  # A second transfer must ask before replacing populated local setup.
  with context.expect_page() as another:page.get_by_role('button',name='Continue locally',exact=True).click()
