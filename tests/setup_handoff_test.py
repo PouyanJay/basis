@@ -35,8 +35,8 @@ with sync_playwright() as p:
   page.get_by_role('navigation',name='Set up sections').get_by_role('button',name=label,exact=True).click()
  nav(page,'Services & criteria')
  for name in ['Cursor','Devin','OpenCode']:page.get_by_role('button',name=f'Remove {name} from evaluation',exact=True).click()
- page.get_by_label('Codex model',exact=True).fill('test-model')
- page.get_by_label('Codex model',exact=True).blur()
+ page.get_by_role('combobox',name='Codex model',exact=True).click()
+ page.get_by_role('option',name='GPT-6.1 Sol',exact=True).click()
  page.get_by_label('Codex API key',exact=True).fill('test-only-handoff-openai')
  assert page.locator('[data-config-service="codex"] [data-save-local]').count()==0
  assert 'test-only-handoff-openai' not in page.evaluate('JSON.stringify(localStorage)')
@@ -53,7 +53,7 @@ with sync_playwright() as p:
  local=new_page.value
  local.get_by_role('heading',name='Services & criteria',exact=True).wait_for()
  local.wait_for_function('document.querySelectorAll("[data-key-status].pass").length === 2')
- assert local.locator('[data-service-model="codex"]').input_value()=='test-model'
+ assert local.locator('[data-service-model="codex"]').input_value()=='gpt-6.1-sol'
  assert keys=={'OPENAI_API_KEY':'test-only-handoff-openai','ANTHROPIC_API_KEY':'test-only-handoff-anthropic'}
  assert 'test-only-handoff' not in local.evaluate('JSON.stringify(localStorage)')
  assert 'test-only-handoff' not in page.evaluate('JSON.stringify(localStorage)')

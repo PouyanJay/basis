@@ -674,3 +674,7 @@ textarea:focus, select:focus,
  .requirements-panel td .dropdown{min-width:0;width:100%}
  .requirements-panel .gate-title{white-space:normal}
 }
+
+/* Match model selectors to the adjacent credential controls. */
+.service-config-fields .dropdown-trigger { height:42px; min-height:42px; }
+@media(max-width:800px){.service-config-fields .dropdown-trigger{font-size:16px;min-height:44px;height:44px;}}

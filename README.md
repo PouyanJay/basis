@@ -232,3 +232,7 @@ Issues and pull requests are welcome. Include reproduction steps for bugs, sourc
 ## License
 
 [Apache License 2.0](LICENSE). External benchmark datasets, harnesses, and provider tools retain their own licenses and terms.
+
+### Model selection
+
+Choose a model under **Set up → Services & criteria**. Codex, Claude Code, and Cursor can use their service default; OpenCode needs an explicit provider and model. Choices are maintained from the [Codex model documentation](https://learn.chatgpt.com/docs/models), [Claude Code model configuration](https://code.claude.com/docs/en/model-config), [Cursor model catalog](https://cursor.com/docs/models), and [OpenCode model configuration](https://opencode.ai/docs/models/). Availability depends on your provider account and installed CLI version. Existing saved model selections are retained; custom services manage their models externally.
