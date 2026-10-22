@@ -618,3 +618,23 @@ textarea:focus, select:focus,
 /* Unified evaluation flow */
 .run-consent{display:flex;align-items:flex-start;gap:12px;margin:20px 0;color:var(--muted);line-height:1.6}.run-consent input{width:18px;height:18px;flex:0 0 18px;margin-top:4px;accent-color:#bc9cef}.pack-list{padding:0;list-style:none}.pack-list li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--border)}.pack-list code,.attempt-row code,.panelnote code{overflow-wrap:anywhere}.evaluation-attempts{display:grid;gap:0}.attempt-row{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:24px 0;border-bottom:1px solid var(--border)}.attempt-row:last-child{border-bottom:0}.attempt-row p{color:var(--muted);margin:8px 0}.attempt-row details{margin-top:12px}.plan-preview{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto;font-size:13px}#evaluation-progress progress{width:100%;height:8px;accent-color:#bc9cef}#evaluation-error,#benchmark-pack-feedback,#evaluation-readiness{margin-top:16px;color:var(--muted);line-height:1.6}@media(max-width:700px){.attempt-row{flex-direction:column}.pack-list li{align-items:flex-start}.run-consent{font-size:14px}}
 .benchmark-choice{padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid var(--border)}.benchmark-choice label{max-width:260px;margin-bottom:16px}
+/* Credentials: one compact connection bar and flat provider rows. */
+.connection-strip{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 20px;padding:14px 0;margin-bottom:24px;border-bottom:1px solid var(--line);font-size:13px}
+.connection-state,.connection-actions{display:flex;align-items:center;gap:12px}
+.connection-state>svg{color:var(--soft)}
+.connection-strip p{flex-basis:100%;margin:0;color:var(--soft);font-size:12px}
+.connection-strip [hidden]{display:none}
+.credentials-panel .panelheading{margin-bottom:0}
+.credentials-panel .local-credentials{margin:8px 0 0}
+.credentials-panel .local-credential{padding:24px 0}
+.credentials-panel .local-credential:first-child{border-top:0}
+.credential-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
+.credential-heading h3{margin:0;font-size:14px;font-weight:500}
+.credential-entry{display:flex;align-items:center;gap:12px}
+.credential-entry input{flex:1;min-width:0;margin:0}
+.credential-entry button{flex-shrink:0;min-width:112px}
+.credential-feedback{margin:10px 0 0;color:var(--soft);font-size:12px}
+.credential-feedback:empty{display:none}
+.credentials-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:20px;border-top:1px solid var(--line)}
+.credentials-footer>span{display:flex;align-items:center;gap:8px;font-size:12px}
+@media(max-width:600px){.connection-strip{align-items:flex-start}.connection-actions{flex-wrap:wrap}.credential-entry{gap:8px}.credential-entry button{min-width:90px;padding-left:12px;padding-right:12px}.credentials-footer{align-items:flex-start;flex-direction:column}.credentials-footer>.primary{align-self:flex-end}}
