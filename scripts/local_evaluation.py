@@ -189,7 +189,7 @@ class EvaluationRunner:
                 key = self.required_key(agent, model)
                 value = self.vault().get_password('basis-local', key)
                 if not value:
-                    raise ValueError(f'Configure {key} in Settings or Set up → Credentials.')
+                    raise ValueError(f'Configure {key} in Settings or Set up → Requirements.')
                 service['model'] = model or 'CLI default (not pinned)'
                 prepared.append((agent, model, key, value))
             timeout = plan.get('timeoutSeconds', 600)

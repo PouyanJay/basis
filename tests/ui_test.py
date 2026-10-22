@@ -57,7 +57,7 @@ with sync_playwright() as p:
  assert page.locator('select[data-gate="claude:retention"]').count()==0
  page.get_by_role('button',name='Include Claude Code in evaluation',exact=True).click()
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
- page.get_by_role('button',name='Add service',exact=True).click()
+ page.get_by_role('button',name='Add custom service',exact=True).click()
  page.locator('.modal [name="name"]').fill('Team custom tool')
  page.locator('.modal [name="provider"]').fill('Internal')
  page.locator('.modal [name="mode"]').fill('CLI')
@@ -89,8 +89,8 @@ with sync_playwright() as p:
  navigate('Run evaluation')
  assert page.locator('#start-evaluation').is_disabled()
  assert page.locator('[data-act="open-fixture-actions"]').count()==0
- navigate('Set up','Credentials')
- assert page.get_by_role('heading',name='Credentials',exact=True).is_visible()
+ navigate('Set up','Requirements')
+ assert page.get_by_role('heading',name='Requirements',exact=True).is_visible()
  assert page.locator('[data-local-key]').count()>=1
  navigate('Results')
  page.get_by_role('button',name='Imported benchmark reports',exact=True).click()

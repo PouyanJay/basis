@@ -638,3 +638,39 @@ textarea:focus, select:focus,
 .credentials-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:20px;border-top:1px solid var(--line)}
 .credentials-footer>span{display:flex;align-items:center;gap:8px;font-size:12px}
 @media(max-width:600px){.connection-strip{align-items:flex-start}.connection-actions{flex-wrap:wrap}.credential-entry{gap:8px}.credential-entry button{min-width:90px;padding-left:12px;padding-right:12px}.credentials-footer{align-items:flex-start;flex-direction:column}.credentials-footer>.primary{align-self:flex-end}}
+/* Service setup keeps model and credential controls together, without nested cards. */
+.service-selection .panelheading h3,.requirements-panel .panelheading h3{margin:8px 0 0}
+.service-configuration{padding:24px 0;border-top:1px solid var(--line)}
+.service-config-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.service-config-heading h3{font-size:15px;margin:0 0 4px}.service-config-heading .muted{font-size:12px}
+.service-config-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:24px;align-items:start}
+.service-config-fields label{display:block;font-size:12px;color:var(--soft);margin:0}
+.service-config-fields input{margin-top:8px;width:100%;min-width:0}
+.key-field-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:18px}
+.key-field-heading .pill{font-size:10px;padding:2px 7px;line-height:1.4}
+.service-key-field .credential-entry{align-items:flex-end}
+.service-key-field .credential-entry input{margin-top:8px}
+.service-config-note{font-size:12px;color:var(--soft);margin:22px 0 0;line-height:1.6}
+.available-services{display:flex;flex-wrap:wrap;gap:8px;padding-top:16px;border-top:1px solid var(--line)}
+.available-services:empty{display:none}
+.service-config-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:20px;font-size:12px}
+.setup-handoff{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:24px 0;border-top:1px solid var(--line);margin-top:24px}
+.setup-handoff b{font-size:14px}.setup-handoff p{font-size:12px;margin:6px 0 0}.setup-handoff #handoff-feedback{flex-basis:100%;color:var(--soft)}.setup-handoff #handoff-feedback:empty{display:none}
+@media(max-width:800px){.service-config-fields{grid-template-columns:1fr;gap:16px}.service-config-note{margin:0}.service-config-fields input{font-size:16px}.setup-handoff>.inlineactions{width:100%;flex-wrap:wrap}.service-selection>.panelheading,.requirements-panel>.panelheading{align-items:flex-start;flex-wrap:wrap;gap:16px}}
+.service-config-fields>label{display:grid;grid-template-rows:22px auto;row-gap:8px}
+.service-config-fields>label input{margin-top:0}
+.key-field-heading{height:22px;min-height:22px}
+.key-field-heading label{line-height:22px}
+.service-config-fields input,.service-key-field .credential-entry button{height:42px;box-sizing:border-box}
+@media(max-width:760px){
+ .requirements-panel .table-scroll{overflow:visible}
+ .requirements-panel table{min-width:0;width:100%}
+ .requirements-panel thead{display:none}
+ .requirements-panel tbody,.requirements-panel tr,.requirements-panel th{display:block}
+ .requirements-panel tr{padding:18px 0;border-bottom:1px solid var(--line)}
+ .requirements-panel tbody th{padding:0 0 12px;border:0;white-space:normal}
+ .requirements-panel td{display:grid;grid-template-columns:minmax(0,1fr) minmax(140px,1.25fr);gap:12px;align-items:center;padding:6px 0;border:0}
+ .requirements-panel td::before{content:attr(data-service-label);color:var(--soft);font-size:12px;overflow-wrap:anywhere}
+ .requirements-panel td .dropdown{min-width:0;width:100%}
+ .requirements-panel .gate-title{white-space:normal}
+}
