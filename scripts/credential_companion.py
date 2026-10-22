@@ -55,6 +55,7 @@ import sys
 sys.path.insert(0, str(ROOT / 'scripts'))
 from local_evaluation import EvaluationRunner, benchmark_pack
 from humaneval_pack import prepare as prepare_humaneval
+from model_discovery import discover
 
 class Runner(EvaluationRunner):
     def __init__(self, folder=None):
@@ -124,6 +125,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {'configured': configured, 'credentialError': issue, 'dockerReady': docker_ready(), 'job': self.runner.snapshot()}); return
             if self.path == '/api/local/job':
                 self._json(200, {'job': self.runner.snapshot()}); return
+            if self.path == '/api/local/models':
+                self._json(200, discover(item.get('service'), item.get('provider'), vault())); return
             if self.path == '/api/local/credentials':
                 name, value = item.get('secret'), item.get('value')
                 if name not in ALLOWED or not isinstance(value, str) or not 8 <= len(value) <= 8000 or any(c in value for c in '\r\n\x00'):

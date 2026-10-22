@@ -18,6 +18,7 @@ with sync_playwright() as p:
    data=request.post_data_json if request.method=='POST' else {}
    if path=='/api/health':result={'service':'basis-local-companion','token':'test-only'}
    elif path=='/api/local/status':result={'configured':{name:True for name in keys},'credentialError':'','dockerReady':True,'job':None}
+   elif path=='/api/local/models':result={'models':[{'id':'test-returned-model','name':'Returned model'}],'source':'test-only'}
    elif path=='/api/local/credentials':keys[data['secret']]=data['value'];result={'saved':True}
    else:result={'evaluations':[],'job':None}
    route.fulfill(json=result);return
@@ -35,8 +36,7 @@ with sync_playwright() as p:
   page.get_by_role('navigation',name='Set up sections').get_by_role('button',name=label,exact=True).click()
  nav(page,'Services & criteria')
  for name in ['Cursor','Devin','OpenCode']:page.get_by_role('button',name=f'Remove {name} from evaluation',exact=True).click()
- page.get_by_role('combobox',name='Codex model',exact=True).click()
- page.get_by_role('option',name='GPT-6.1 Sol',exact=True).click()
+ assert page.get_by_role('combobox',name='Codex model',exact=True).is_disabled()
  page.get_by_label('Codex API key',exact=True).fill('test-only-handoff-openai')
  assert page.locator('[data-config-service="codex"] [data-save-local]').count()==0
  assert 'test-only-handoff-openai' not in page.evaluate('JSON.stringify(localStorage)')
@@ -53,7 +53,9 @@ with sync_playwright() as p:
  local=new_page.value
  local.get_by_role('heading',name='Services & criteria',exact=True).wait_for()
  local.wait_for_function('document.querySelectorAll("[data-key-status].pass").length === 2')
- assert local.locator('[data-service-model="codex"]').input_value()=='gpt-6.1-sol'
+ local.get_by_role('combobox',name='Codex model',exact=True).click()
+ local.get_by_role('option',name='Returned model · test-returned-model',exact=True).click()
+ assert local.locator('[data-service-model="codex"]').input_value()=='test-returned-model'
  assert keys=={'OPENAI_API_KEY':'test-only-handoff-openai','ANTHROPIC_API_KEY':'test-only-handoff-anthropic'}
  assert 'test-only-handoff' not in local.evaluate('JSON.stringify(localStorage)')
  assert 'test-only-handoff' not in page.evaluate('JSON.stringify(localStorage)')

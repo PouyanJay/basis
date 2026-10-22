@@ -50,35 +50,14 @@ with sync_playwright() as p:
  assert 'Browser UI test task' in page.locator('body').inner_text()
 
  navigate('Set up','Services & criteria')
- # Model choices use the shared dropdown, preserve older studies, and select the correct key.
+ # Hosted setup cannot discover models until credentials are transferred locally.
  assert page.locator('input[data-service-model]').count()==0
- page.get_by_role('combobox',name='OpenCode model',exact=True).click()
- page.get_by_role('option',name='Anthropic · Sonnet 5.5',exact=True).click()
+ assert page.get_by_role('combobox',name='Claude Code model',exact=True).is_disabled()
+ assert page.get_by_role('combobox',name='Codex model',exact=True).is_disabled()
+ page.get_by_role('combobox',name='OpenCode provider',exact=True).click()
+ page.get_by_role('option',name='Anthropic',exact=True).click()
  assert page.locator('[data-service-key="opencode"] input').get_attribute('data-local-key')=='ANTHROPIC_API_KEY'
- page.get_by_role('combobox',name='OpenCode model',exact=True).click()
- page.get_by_role('option',name='OpenAI · GPT-6.1 Sol',exact=True).click()
- assert page.locator('[data-service-key="opencode"] input').get_attribute('data-local-key')=='OPENAI_API_KEY'
- page.get_by_label('Codex API key',exact=True).fill('test-only-unsaved')
- page.get_by_role('combobox',name='Codex model',exact=True).focus()
- page.keyboard.press('ArrowDown');page.keyboard.press('ArrowDown');page.keyboard.press('Enter')
- assert page.locator('[data-service-model="codex"]').input_value()=='gpt-6.1-sol'
- assert page.get_by_label('Codex API key',exact=True).input_value()=='test-only-unsaved'
- page.evaluate("s.platforms.find(p=>p.id==='codex').model='previous-custom-model';save();render()")
- assert page.get_by_role('combobox',name='Codex model',exact=True).inner_text()=='previous-custom-model (saved selection)'
- page.get_by_role('combobox',name='Codex model',exact=True).click()
- page.get_by_role('option',name='Use service default',exact=True).click()
- page.get_by_role('combobox',name='Claude Code model',exact=True).click()
- page.screenshot(path=str(SCREENSHOTS/'model-selector-desktop.png'))
- page.keyboard.press('Escape')
- page.set_viewport_size({'width':390,'height':844})
- page.get_by_role('combobox',name='OpenCode model',exact=True).click()
- assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
- page.wait_for_timeout(150)
- menu=page.get_by_role('listbox').bounding_box()
- assert menu and menu['x']>=0 and menu['x']+menu['width']<=390
- page.screenshot(path=str(SCREENSHOTS/'model-selector-mobile.png'))
- page.keyboard.press('Escape')
- page.set_viewport_size({'width':1440,'height':900})
+ assert page.get_by_role('combobox',name='OpenCode model',exact=True).is_disabled()
  page.locator('select[data-gate="claude:retention"]').locator('..').get_by_role('combobox').click()
  page.get_by_role('option',name='Fail',exact=True).click()
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'

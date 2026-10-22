@@ -52,6 +52,18 @@ class CompanionTests(unittest.TestCase):
         self.assertTrue(result['configured']['OPENAI_API_KEY'])
         self.assertNotIn('test-secret-value', json.dumps(result))
         self.assertFalse(result['configured']['ANTHROPIC_API_KEY'])
+    def test_model_endpoint_uses_saved_key_and_same_origin(self):
+        with patch('model_discovery.request_json', return_value={'data':[{'id':'returned-fixture-model'}]}) as provider:
+            self.assertEqual(self.request('/api/local/models', {'service':'codex'})[0],400)
+            provider.assert_not_called()
+            self.store.set_password('basis-local','OPENAI_API_KEY','test-secret-value')
+            self.assertEqual(self.request('/api/local/models', {'service':'codex'}, Origin='https://evil.example')[0],403)
+            provider.assert_not_called()
+            code,result=self.request('/api/local/models', {'service':'codex'})
+            self.assertEqual(code,200)
+            self.assertEqual(result['models'][0]['id'],'returned-fixture-model')
+            self.assertNotIn('test-secret-value',json.dumps(result))
+
     def test_invalid_credentials(self):
         for data in [{'secret':'ADMIN_KEY','value':'test-key-value'}, {'secret':'OPENAI_API_KEY','value':'test\nkey-value'}, {'secret':'OPENAI_API_KEY','value':'short'}]:
             self.assertEqual(self.request('/api/local/credentials', data)[0], 400)

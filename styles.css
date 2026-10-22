@@ -678,3 +678,12 @@ textarea:focus, select:focus,
 /* Match model selectors to the adjacent credential controls. */
 .service-config-fields .dropdown-trigger { height:42px; min-height:42px; }
 @media(max-width:800px){.service-config-fields .dropdown-trigger{font-size:16px;min-height:44px;height:44px;}}
+
+.service-config-fields{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.model-field-heading{height:22px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.model-field-heading .iconbtn{width:26px;height:26px;padding:4px}
+.model-feedback{font-size:12px;color:var(--soft);margin:8px 0 0;overflow-wrap:anywhere}
+.model-feedback:empty{display:none}
+.model-provider{display:block;max-width:320px;font-size:12px;color:var(--soft);margin-bottom:20px}
+.model-provider .dropdown{margin-top:8px}
+@media(max-width:800px){.service-config-fields{grid-template-columns:1fr}}

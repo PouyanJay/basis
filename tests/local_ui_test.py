@@ -13,6 +13,13 @@ from playwright.sync_api import sync_playwright
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('local_bridge',ROOT/'scripts/credential_companion.py')
 bridge=importlib.util.module_from_spec(spec);spec.loader.exec_module(bridge)
+import model_discovery
+catalog_id="returned-model-v1"
+def provider_response(url,headers):
+    key=headers.get('Authorization',headers.get('x-api-key',''))
+    if 'rejected-key' in key:raise RuntimeError('The provider rejected this key.')
+    if 'empty-key' in key:return {'data':[]}
+    return {'data':[{'id':catalog_id,'display_name':'Provider model'}]}
 class TestVault:
     values={}
     def get_password(self, service, name): return self.values.get(name)
@@ -33,7 +40,7 @@ pack.write_text(json.dumps({'schemaVersion':1,'name':'UI test benchmark','revisi
 server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(bridge.Handler,token='test-only-token',runner=runner))
 threading.Thread(target=server.serve_forever,daemon=True).start()
 try:
- with patch.object(bridge,'vault',return_value=TestVault()),patch.object(bridge,'docker_ready',return_value=True),sync_playwright() as p:
+ with patch.object(bridge,'vault',return_value=TestVault()),patch.object(bridge,'docker_ready',return_value=True),patch.object(model_discovery,'request_json',side_effect=provider_response),sync_playwright() as p:
   browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
   page=browser.new_page(viewport={'width':1440,'height':1000});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   page.goto(f'http://127.0.0.1:{server.server_port}/')
@@ -43,6 +50,8 @@ try:
   nav('Set up','Services & criteria')
   for name in ['Cursor','Devin','OpenCode']:page.get_by_role('button',name=f'Remove {name} from evaluation',exact=True).click()
   assert page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Credentials',exact=True).count()==0
+  assert page.get_by_role('combobox',name='Codex model',exact=True).is_disabled()
+  assert page.get_by_role('combobox',name='Claude Code model',exact=True).is_disabled()
   nav('Settings')
   page.locator('[data-local-key="OPENAI_API_KEY"]').fill('test-only-key-never-real')
   page.locator('[data-save-local="OPENAI_API_KEY"]').click()
@@ -51,12 +60,47 @@ try:
   assert 'test-only-key-never-real' not in page.evaluate('JSON.stringify(localStorage)')
   nav('Set up','Services & criteria')
   page.wait_for_function('document.querySelector(\'[data-key-status="OPENAI_API_KEY"]\').textContent==="Configured"')
+  # Saved keys unlock a real discovery request; rejected/empty catalogs cannot be selected.
+  for key,message in [('rejected-key-test','Models unavailable'),('empty-key-test','No models returned')]:
+   page.get_by_label('Codex API key',exact=True).fill(key)
+   page.locator('[data-save-local="OPENAI_API_KEY"]').click()
+   page.get_by_role('combobox',name='Codex model',exact=True).get_by_text(message,exact=True).wait_for()
+   assert page.get_by_role('combobox',name='Codex model',exact=True).is_disabled()
+  page.get_by_label('Codex API key',exact=True).fill('test-only-key-never-real')
+  page.locator('[data-save-local="OPENAI_API_KEY"]').click()
+  page.get_by_role('combobox',name='Codex model',exact=True).click()
+  page.get_by_role('option',name='Provider model · returned-model-v1',exact=True).click()
+  catalog_id='returned-model-v2'
+  page.get_by_role('button',name='Refresh Codex models',exact=True).click()
+  page.get_by_text('Previous selection is unavailable. Choose a returned model.',exact=True).wait_for()
+  page.get_by_role('combobox',name='Codex model',exact=True).click()
+  assert page.get_by_role('option',name='Provider model · returned-model-v1',exact=True).count()==0
+  page.get_by_role('option',name='Provider model · returned-model-v2',exact=True).click()
+  catalog_id='returned-model-v1'
+  page.get_by_role('button',name='Refresh Codex models',exact=True).click()
+  page.get_by_role('combobox',name='Codex model',exact=True).click()
+  page.get_by_role('option',name='Provider model · returned-model-v1',exact=True).click()
   nav('Run evaluation')
   page.locator('#evaluation-consent').check();assert page.locator('#start-evaluation').is_disabled()
   nav('Set up','Services & criteria')
   page.locator('[data-local-key="ANTHROPIC_API_KEY"]').fill('test-only-second-key')
   page.locator('[data-save-local="ANTHROPIC_API_KEY"]').click()
   page.wait_for_function('document.querySelector(\'[data-key-status="ANTHROPIC_API_KEY"]\').textContent==="Configured"')
+  page.get_by_role('combobox',name='Claude Code model',exact=True).click()
+  page.get_by_role('option',name='Provider model · returned-model-v1',exact=True).click()
+  page.get_by_role('button',name='Refresh Claude Code models',exact=True).click()
+  page.get_by_role('combobox',name='Claude Code model',exact=True).click()
+  out=ROOT/'test-results/local';out.mkdir(parents=True,exist_ok=True)
+  page.screenshot(path=str(out/'discovered-models-desktop.png'))
+  page.keyboard.press('Escape')
+  page.set_viewport_size({'width':390,'height':844})
+  page.get_by_role('combobox',name='Claude Code model',exact=True).click()
+  page.wait_for_timeout(100)
+  menu=page.get_by_role('listbox').bounding_box()
+  assert menu and menu['x']>=0 and menu['x']+menu['width']<=390
+  assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+  page.screenshot(path=str(out/'discovered-models-mobile.png'))
+  page.keyboard.press('Escape');page.set_viewport_size({'width':1440,'height':1000})
   nav('Set up','Tasks')
   page.get_by_role('button',name='Add task',exact=True).click()
   page.locator('.modal [name="name"]').fill('Team greeting')

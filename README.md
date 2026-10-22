@@ -235,4 +235,11 @@ Issues and pull requests are welcome. Include reproduction steps for bugs, sourc
 
 ### Model selection
 
-Choose a model under **Set up → Services & criteria**. Codex, Claude Code, and Cursor can use their service default; OpenCode needs an explicit provider and model. Choices are maintained from the [Codex model documentation](https://learn.chatgpt.com/docs/models), [Claude Code model configuration](https://code.claude.com/docs/en/model-config), [Cursor model catalog](https://cursor.com/docs/models), and [OpenCode model configuration](https://opencode.ai/docs/models/). Availability depends on your provider account and installed CLI version. Existing saved model selections are retained; custom services manage their models externally.
+Under **Set up → Services & criteria**, save a provider key first. The local companion fetches models using that key; the selector stays disabled until discovery succeeds. Keys already saved in Settings are detected automatically. Use Refresh to reload the catalog. Replacing a key discards the previous catalog. Hosted setup transfers to the local app before discovery; no provider keys are sent from the hosted page.
+
+- Claude Code: authenticated [Anthropic Models API](https://platform.claude.com/docs/en/api/models/list), including pagination.
+- Codex: authenticated [OpenAI Models API](https://developers.openai.com/api/reference/resources/models/methods/list).
+- Cursor: authenticated [Cursor CLI model listing](https://cursor.com/changelog/cli-jan-08-2026), using an installed `cursor-agent` or the existing `basis-local-runner:v2` Docker image. If neither is available, install the Cursor CLI or build the runner with `docker build -t basis-local-runner:v2 -f scripts/local-runner.Dockerfile .`.
+- OpenCode: choose OpenAI or Anthropic, save that provider's key, then select a returned model. Basis adds the required provider prefix.
+
+There are no static model lists or fallback aliases. Saved models absent from the returned catalog require reselection. Provider catalogs report API visibility, not a successful coding-agent execution: some listed models may be unsuitable for a particular CLI, and quota or runtime compatibility can still fail during a run. Discovery makes no generation requests. Custom services have no discovery adapter.
