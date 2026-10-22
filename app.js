@@ -245,9 +245,9 @@ function messageDialog(message,{title='Check your input',confirmLabel='Continue'
   dialog.addEventListener('keydown',event=>{
    if(event.key!=='Tab')return;
    const buttons=[...dialog.querySelectorAll('button:not(:disabled)')];
-   const first=buttons[0],last=buttons.at(-1);
-   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
-   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+   event.preventDefault();
+   const index=buttons.indexOf(document.activeElement);
+   buttons[(index+(event.shiftKey?-1:1)+buttons.length)%buttons.length].focus();
   });
   dialog.showModal();
  });
