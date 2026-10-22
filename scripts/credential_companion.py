@@ -50,117 +50,15 @@ def required_key(agent, model):
     return KEYS[agent]
 
 
-class Runner:
+# Permit imports when loaded by the test harness as well as launched as a script.
+import sys
+sys.path.insert(0, str(ROOT / 'scripts'))
+from local_evaluation import EvaluationRunner, benchmark_pack
+from humaneval_pack import prepare as prepare_humaneval
+
+class Runner(EvaluationRunner):
     def __init__(self, folder=None):
-        self.folder = pathlib.Path(folder or pathlib.Path.home() / '.local/share/basis')
-        self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-        self.lock = threading.RLock()
-        self.job = None
-        self.file = self.folder / 'latest-run.json'
-        if self.file.exists():
-            try:
-                self.job = json.loads(self.file.read_text())
-                if self.job['status'] in ('preparing', 'running'):
-                    container = self.job.get('container', '')
-                    if re.fullmatch(r'basis-[a-f0-9]{32}', container):
-                        self.remove_container(container)
-                    self.job.update(status='interrupted', message='The local companion stopped. Start a new run when ready.', container=None)
-            except (ValueError, KeyError):
-                self.job = None
-
-    @staticmethod
-    def remove_container(name):
-        try:
-            subprocess.run(['docker', 'rm', '-f', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-
-    def stop(self):
-        job = self.snapshot()
-        if job and job['status'] in ('preparing', 'running'):
-            if job.get('container'):
-                self.remove_container(job['container'])
-            self.update(status='interrupted', message='The local companion stopped.', container=None)
-
-    def snapshot(self):
-        with self.lock:
-            return json.loads(json.dumps(self.job))
-
-    def update(self, **values):
-        with self.lock:
-            self.job.update(values)
-            temp = self.file.with_suffix('.tmp')
-            fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, 'w') as f:
-                json.dump(self.job, f)
-            temp.replace(self.file)
-
-    def start(self, entries, consent):
-        if consent is not True:
-            raise ValueError('Confirm provider API usage before starting.')
-        if not isinstance(entries, list) or not 1 <= len(entries) <= 4:
-            raise ValueError('Select one to four supported services.')
-        seen, prepared = set(), []
-        store = vault()
-        for entry in entries:
-            if not isinstance(entry, dict):
-                raise ValueError('Invalid service configuration.')
-            agent, model = entry.get('agent'), entry.get('model', '')
-            if not isinstance(agent, str):
-                raise ValueError('Invalid service.')
-            if not isinstance(model, str) or len(model) > 100 or (model and not re.fullmatch(r'[\w./:-]+', model, re.ASCII)):
-                raise ValueError('Invalid model identifier.')
-            key = required_key(agent, model)
-            if agent in seen:
-                raise ValueError('Select each service only once.')
-            seen.add(agent)
-            value = store.get_password('basis-local', key)
-            if not value:
-                raise ValueError(f'Configure {key} in Settings first.')
-            prepared.append((agent, model, key, value))
-        if not docker_ready():
-            raise ValueError('Start Docker, then check connection again.')
-        with self.lock:
-            if self.job and self.job['status'] in ('preparing', 'running'):
-                raise ValueError('A test is already running. Wait for it to finish.')
-            self.job = {'id': uuid.uuid4().hex, 'status': 'preparing', 'message': 'Preparing the local runner. First use downloads the agent tools and may take several minutes.', 'results': [], 'agents': [x[0] for x in prepared]}
-            self.update()
-            threading.Thread(target=self.execute, args=(prepared,), daemon=True).start()
-            return self.snapshot()
-
-    def execute(self, prepared):
-        container = None
-        try:
-            # Always build to honor runner changes; Docker caches unchanged layers. No credentials in build.
-            build = subprocess.run(['docker', 'build', '-t', IMAGE, '-f', 'scripts/local-runner.Dockerfile', '.'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=900)
-            if build.returncode:
-                raise RuntimeError('Could not prepare the runner image. Check Docker and network access, then retry.')
-            results = []
-            for agent, model, key, value in prepared:
-                self.update(status='running', message=f'Running {agent} on the included sample task…')
-                container = 'basis-' + uuid.uuid4().hex
-                self.update(container=container)
-                env = {k: v for k, v in os.environ.items() if k not in ALLOWED}
-                env[key] = value
-                command = ['docker', 'run', '--rm', '--name', container, '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--pids-limit=256', '--memory=2g', '--cpus=2', '--tmpfs', '/work:rw,nosuid,size=64m,uid=1000,gid=1000', '--tmpfs', '/tmp:rw,nosuid,size=128m', '--tmpfs', '/home/node:rw,nosuid,size=256m,uid=1000,gid=1000', '-e', key, IMAGE, agent, model]
-                run = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=750)
-                if run.returncode:
-                    raise RuntimeError(f'The {agent} container could not complete. Check Docker resources and retry.')
-                report = json.loads(run.stdout)
-                # Persist only the trusted runner's summary, never agent output or credentials.
-                if report.get('type') != 'basis-agent-evaluation' or report.get('candidate') != agent:
-                    raise RuntimeError('The runner returned an invalid summary.')
-                results.append(report)
-                self.update(results=results, container=None)
-                container = None
-            self.update(status='completed', message='Tests finished. Review the automated checks below; human review is still required.')
-        except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
-            message = str(error) if isinstance(error, RuntimeError) else 'The local runner stopped or timed out. Check Docker and retry.'
-            self.update(status='failed', message=message)
-        finally:
-            if container:
-                self.remove_container(container)
-            prepared.clear()
+        super().__init__(folder, ROOT, lambda: vault(), lambda: docker_ready(), required_key, ALLOWED)
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -211,8 +109,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(403, {'error': 'Open Basis from this local companion.'}); return
         try:
             length = int(self.headers.get('Content-Length', '0'))
-            if self.headers.get('Content-Type', '').split(';')[0] != 'application/json' or not 1 <= length <= 16000:
-                raise ValueError('Expected a small JSON request.')
+            if self.headers.get('Content-Type', '').split(';')[0] != 'application/json' or not 1 <= length <= 500000:
+                raise ValueError('Expected a JSON request under 500 KB.')
             item = json.loads(self.rfile.read(length))
             if not isinstance(item, dict):
                 raise ValueError('Expected a JSON object.')
@@ -235,11 +133,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except Exception:
                     self._json(503, {'error': 'Could not save to the OS credential store. Install local dependencies and unlock the store.'}); return
                 self._json(200, {'saved': True, 'name': name}); return
+            if self.path == '/api/local/evaluations':
+                self._json(200, {'evaluations': self.runner.history()}); return
+            if self.path == '/api/local/stop':
+                self._json(200, {'job': self.runner.stop()}); return
+            if self.path == '/api/local/review':
+                self._json(200, {'job': self.runner.review(item.get('id'), item.get('key'), item.get('review'))}); return
+            if self.path == '/api/local/prepare-humaneval':
+                path = prepare_humaneval(self.runner.folder, item.get('count', 5))
+                self._json(200, {'path': path, 'benchmark': benchmark_pack(path)}); return
+            if self.path == '/api/local/benchmark':
+                self._json(200, {'benchmark': benchmark_pack(item.get('path', ''))}); return
             if self.path == '/api/local/run':
-                self._json(202, {'job': self.runner.start(item.get('agents'), item.get('consent'))}); return
+                self._json(202, {'job': self.runner.start(item.get('plan'), item.get('consent'))}); return
             self._json(404, {'error': 'Unknown route'})
-        except (ValueError, TypeError, KeyError):
-            self._json(400, {'error': 'Invalid request or run prerequisites. Check selected services, model identifiers, saved credentials, and Docker.'})
+        except ValueError as error:
+            self._json(400, {'error': str(error)})
+        except (TypeError, KeyError, OSError):
+            self._json(400, {'error': 'Invalid request or inaccessible local file. Check paths and permissions.'})
         except RuntimeError as error:
             self._json(503, {'error': str(error)})
 

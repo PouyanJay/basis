@@ -1,12 +1,4 @@
 **
 !scripts/
-!scripts/run_agent.py
-!scripts/local_container.py
+!scripts/evaluation_container.py
 !scripts/local-runner.Dockerfile
-!fixtures/
-!fixtures/agent_task/
-!fixtures/agent_task/**
-!benchmark-tests/
-!benchmark-tests/agent_task/
-!benchmark-tests/agent_task/**
-**/__pycache__

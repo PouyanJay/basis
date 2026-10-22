@@ -66,36 +66,8 @@ class CompanionTests(unittest.TestCase):
         self.store.set_password('basis-local','OPENAI_API_KEY','test-secret')
         self.assertEqual(self.request('/api/local/run', {**data,'consent':False})[0], 400)
         self.assertEqual(self.request('/api/local/run', {**data,'agents':[{'agent':'opencode','model':'unknown/model'}]})[0],400)
-    def test_run_isolation_and_result_persistence(self):
-        self.runner.job = {'id':'test','status':'preparing','results':[]}
-        report = {'type':'basis-agent-evaluation','candidate':'codex','automatedTestsPass':False}
-        calls=[]
-        def run(argv, **kwargs):
-            calls.append((argv,kwargs))
-            return subprocess.CompletedProcess(argv,0,stdout=json.dumps(report))
-        with patch.object(bridge.subprocess,'run',side_effect=run):
-            self.runner.execute([('codex','','OPENAI_API_KEY','test-secret-value')])
-        command, kwargs = calls[1]
-        self.assertIn('--read-only',command)
-        self.assertIn('--cap-drop=ALL',command)
-        self.assertNotIn('test-secret-value',' '.join(command))
-        self.assertEqual(kwargs['env']['OPENAI_API_KEY'],'test-secret-value')
-        self.assertNotIn('-v', command)
-        self.assertEqual(self.runner.snapshot()['status'],'completed')
-        self.assertEqual(bridge.Runner(self.folder.name).snapshot()['results'], [report])
-        self.assertNotIn('test-secret-value', self.runner.file.read_text())
-    def test_duplicate_run_rejected(self):
+    def test_invalid_plan_rejected(self):
         self.store.set_password('basis-local','OPENAI_API_KEY','test-secret')
-        self.runner.job={'status':'running'}
-        with self.assertRaises(ValueError): self.runner.start([{'agent':'codex'}], True)
-    def test_timeout_cleans_container(self):
-        self.runner.job={'status':'preparing','results':[]}
-        def run(argv, **kwargs):
-            if argv[1]=='run': raise subprocess.TimeoutExpired(argv,750)
-            return subprocess.CompletedProcess(argv,0)
-        with patch.object(bridge.subprocess,'run',side_effect=run) as mock:
-            self.runner.execute([('codex','','OPENAI_API_KEY','test-secret')])
-        self.assertEqual(self.runner.snapshot()['status'],'failed')
-        self.assertEqual(mock.call_args.args[0][1:3], ['rm','-f'])
+        self.assertEqual(self.request('/api/local/run', {'consent':True,'plan':{}})[0],400)
 
 if __name__ == '__main__': unittest.main()

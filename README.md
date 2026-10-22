@@ -18,7 +18,7 @@ A workspace for comparing coding agents through your engineering needs, governan
 
 [**Open the live app →**](https://pouyanjay.github.io/basis/) · No account or API key required to explore the workspace.
 
-<img src="docs/assets/basis-overview.png" width="1200" alt="Basis home screen with a guided first test, three evaluation stages, and simplified navigation" />
+<img src="docs/assets/basis-overview.png" width="1200" alt="Basis home screen with three evaluation stages and simplified navigation" />
 
 <sub>A new study starts with no pilot results or preloaded vendor scores.</sub>
 
@@ -30,24 +30,24 @@ Choosing a coding agent involves more than a benchmark score. A tool needs to fi
 
 Basis brings those questions into one study. It connects an engineering profile, governance gates, task-level observations, and documented vendor capabilities, while keeping the provenance and limits of each result visible.
 
-**Current status:** the static application is deployed and browser-tested. Local sample-task execution is implemented with OS credential storage and isolated Docker containers. Credentialed vendor runs and official SWE-bench grading have not yet been validated end to end. Imported results remain unverified evidence.
+**Current status:** the static application is deployed and browser-tested. Local evaluation execution, saved plans, run history, cancellation, review, and optional benchmark integration are implemented. Automated tests cover the browser/backend workflow and container boundaries. Paid vendor calls have not been validated end to end; imported reports remain unverified evidence.
 
 ## What you can do
 
 | Area | Purpose |
 |---|---|
-| **Home** | A suggested first test and a plain-language explanation of what runs where. |
+| **Home** | A guided path through setup, execution, and results. |
 | **Set up** | Team context, service selection, requirements, and task definitions with acceptance criteria. |
-| **Run tests** | Run the included sample locally, record attempts from your own tasks, or import external benchmark evidence. |
-| **Results** | Browse recorded pilot results, compare services, and review imported agent checks and external reports. |
+| **Run evaluation** | Execute setup tasks and optional HumanEval or local benchmark packs; monitor progress and stop runs. |
+| **Results** | Compare saved run outcomes, inspect requirement assessments, record human review, and include/exclude benchmark evidence. |
 | **Tool catalog** | Documented vendor capabilities and their primary sources. |
 | **Settings** | Shared OS credential status and local evaluation data. |
 
-The interface pairs neutral charcoal surfaces and compact Inter typography with restrained violet accents. The precision star mark anchors the sidebar and browser icon; the home screen introduces the evaluation workflow before showing detailed analysis. Layouts adapt to desktop and mobile screens. Study state is stored in your browser's local storage; it is specific to that browser and origin, with no shared database or account synchronization. A hard refresh preserves this data. Use **Settings → Reset evaluation** to clear the local study, imported results, and run settings; export the study and keep original report files first if you need them. Reset does not delete OS credentials or the companion’s latest run.
+The interface pairs neutral charcoal surfaces and compact Inter typography with restrained violet accents. The precision star mark anchors the sidebar and browser icon; the home screen introduces the evaluation workflow before showing detailed analysis. Layouts adapt to desktop and mobile screens. Study state is stored in your browser's local storage; it is specific to that browser and origin, with no shared database or account synchronization. A hard refresh preserves this data. Use **Settings → Reset evaluation** to clear the local study, imported results, and run settings; export the study and keep original report files first if you need them. Reset does not delete OS credentials or saved local evaluations.
 
 ## Quick start
 
-Use the [hosted app](https://pouyanjay.github.io/basis/) to explore the workspace. To save credentials and execute the included sample task, run Basis locally with Python 3.9+ and Docker:
+Use the [hosted app](https://pouyanjay.github.io/basis/) to explore the workspace. To save credentials and execute your evaluation, run Basis locally with Python 3.9+ and Docker:
 
 ```sh
 git clone https://github.com/PouyanJay/basis.git
@@ -59,19 +59,19 @@ python3 -m venv .venv
 
 Open **http://127.0.0.1:8765/**. On Windows, use `.venv\Scripts\python.exe` instead. Start Docker before running a test. The frontend uses native JavaScript modules and has no build step.
 
-### Your first test
+### Your first evaluation
 
-1. **Set up → Requirements:** select your services.
-2. **Set up → Credentials:** save the required keys once. Keys already saved through Settings show **Configured**; there is no need to enter them again.
-3. **Run tests → Small test run:** choose optional models, confirm provider API usage, and click **Run selected services**.
-4. Watch progress and results automatically. The first run builds the container image and may take several minutes.
-5. Review checks under **Results**. Passing automated checks does not establish independent human acceptance.
+1. **Set up:** describe team context, select services and models, assess requirements, and define tasks with acceptance criteria. A task can start empty or from a local source folder. Optionally supply an independent checks folder and command.
+2. **Credentials:** save provider keys once. Keys saved in Settings already show **Configured**.
+3. **Run evaluation:** optionally add HumanEval tasks or local benchmark packs, set a time limit, review readiness, authorize provider usage, and press **Run evaluation**.
+4. Watch progress or stop the run. The first run builds the agent image and may take several minutes.
+5. **Results:** select a saved evaluation, inspect each attempt and its local files, record human acceptance/effort/cost, and compare services. Benchmark evidence can be included or excluded without deleting it.
 
-No fork, GitHub login, repository secrets, workflow dispatch, or artifact download is required. GitHub secrets previously saved by the old helper cannot be retrieved; enter those keys locally once. The same keys are then available in Settings and Set up.
+The runner freezes your setup and input files before starting. Every service gets the same initial source in its own workspace. Editing setup afterward does not change an existing evaluation. Run history survives browser reloads and companion restarts; unfinished runs become interrupted.
 
-**What runs where:** the browser stores your study, the OS credential store holds API keys, and the local companion executes the included public fixture in disposable Docker containers. External benchmark suites and user-defined tasks are not automatically executed by the sample-task runner.
+No GitHub execution workflow, repository secret, or artifact transfer is required. The hosted site is a setup/exploration interface; automatic execution requires opening the local companion. Setup is browser-origin specific: export/import your study to transfer it between the hosted and local sites.
 
-For a broader team evaluation, use **Set up → Tasks** to define tasks and acceptance criteria. Perform the tasks with your selected services outside Basis, then use **Run tests → Record a result** to log each attempt, including failures, human effort, usage cost, and evidence. Saved attempts appear under **Results → Pilot results**. The **Fair testing guide** is available from Help, Tasks, and Record a result. **Run tests → External benchmarks** contains upstream suite instructions and external report import. **Results** keeps these evidence sources separate and offers deeper pilot comparison, review quality, and decision summary tabs.
+Team context and acceptance criteria guide agent prompts. Requirements, workload mix, and decision priorities are preserved for review. Governance requirements are not automatically certified by coding tests. Provider costs and human effort remain unknown until explicitly recorded; Basis does not enforce a monetary budget.
 
 ## Evidence model
 
@@ -82,7 +82,7 @@ Basis keeps documented capabilities, automated checks, and independent acceptanc
 | **Documented vendor capability** | A sourced claim about a tool; it is not an experimentally verified result. |
 | **Manual observation or imported report** | User-provided evidence, treated as self-reported and unverified. |
 | **Automated test result** | Technical evidence from a specific task and run; it does not establish human acceptance. |
-| **Independently reviewed, digest-linked record** | Required for verified eligibility. The prototype does not yet provide a reviewer sign-off UI. |
+| **Independently reviewed, digest-linked record** | Required for verified eligibility. The review UI records self-reported acceptance, not independent identity verification. |
 
 New studies contain no synthetic vendor scores or pilot results, and mock records are rejected on import. Unverified evidence cannot produce a procurement winner. Benchmark comparisons require matching dataset and harness versions, task sets, and evaluation conditions; a sampled run is not an official leaderboard score.
 
@@ -99,19 +99,55 @@ The local runner supports these adapters:
 | Codex | `codex` | `OPENAI_API_KEY` |
 | OpenCode | `opencode` | `OPENAI_API_KEY` for `openai/model`, or `ANTHROPIC_API_KEY` for `anthropic/model` |
 
-Each selected supported service receives the same public Python addition task in a fresh container. Devin, xAI, and custom services remain manual evaluations and are clearly excluded from automatic execution.
+Each supported service attempts every selected task sequentially. Unsupported services block automatic execution with an actionable readiness message; they are never silently omitted. Set an explicit model in **Set up → Requirements** for reproducibility. An empty model uses the CLI default, which is labeled as unpinned; OpenCode requires `openai/model` or `anthropic/model`.
 
 ### Credentials and execution boundaries
 
-Credentials are stored using the OS credential store (macOS Keychain, Windows Credential Locker, Linux Secret Service or KWallet). Basis returns presence flags only, never stored values. **Configured** confirms storage, not provider validity or remaining credit. Keys can be replaced from either Settings or Set up. They are not written to browser storage, exports, build layers, or source files.
+Keys are stored in macOS Keychain, Windows Credential Locker, Linux Secret Service, or KWallet. The interface receives presence flags, not values. **Configured** means saved, not provider-validated. Keys are passed only to the selected agent container, never to builds or the verifier. Agent stdout/stderr is not persisted because it can expose credentials.
 
-Containers run as an unprivileged user with a read-only root, temporary writable directories, dropped capabilities, and CPU, memory, process and time limits. They receive only the selected provider key and have no host-directory or Docker-socket mounts. Network access remains enabled for provider calls. The local Docker administrator can inspect container environments. This is a public-fixture runner, not a general-purpose sandbox for arbitrary repositories.
+The companion copies source into disposable per-attempt workspaces; original folders are never mounted. Copies exclude `.git`, `.env`/`.env.*`, `.ssh`, `.aws`, private-key files, dependency directories, and virtual environments. This is not a comprehensive secret scanner: choose source appropriate for the provider. Copies are limited to 100 MB / 10,000 files per folder; symlink files and special files are rejected, and symlink directories are skipped.
 
-The companion binds to loopback, validates Host and Origin, requires a session token for API requests, and serves only allowlisted frontend assets. It saves the latest run summary under `~/.local/share/basis/latest-run.json` with restricted file permissions. The browser automatically polls progress and reads results; no agent logs or code diffs are published. Restarting the companion preserves completed results; an interrupted run is reported as interrupted.
+Containers use an unprivileged user, read-only root, dropped capabilities, temporary home, and CPU/memory/process/time limits. Only the disposable work folder is mounted writable. Agents have provider network access. Independent checks are mounted read-only **only in a second container**, without provider keys or network access. The Docker socket is never mounted. The runtime includes Python 3, Node.js, and Git; additional project dependencies must be available in the copied work or installed there during the agent attempt. Arbitrary test commands execute inside the container, never on the host.
+
+Plans, input snapshots, generated work, results, and human review are retained at:
+
+```text
+~/.local/share/basis/evaluations/<run-id>/
+  plan.json                 Frozen setup, tasks, services, source/check digests
+  inputs/<task>/            Original source and independent checks
+  attempts/<task>/<agent>/  Generated work for review
+  result.json               Status, outcomes, and separate human review annotations
+```
+
+Resetting browser setup does not remove these files or OS credentials. Export a result with its plan from **Results**. Generated work may contain sensitive content supplied to the agent; it stays local. Never use administrative provider keys for tasks that do not need them.
+
+The companion binds to loopback, validates Host and Origin, requires a session token for API requests, and serves only allowlisted frontend assets. Statuses distinguish completed, partial (attempt errors/timeouts), stopped, interrupted, and failed runs. A failed automated check is an evaluation outcome, not an infrastructure failure. Missing checks are shown as **Not checked**, not as success.
 
 ### External benchmarks
 
-External suites are run separately with their official harnesses and imported through **Run tests → External benchmarks**. The old GitHub launch workflows have been removed. See [SWEBENCH_SETUP.md](SWEBENCH_SETUP.md) for the scope of the retained command-line tools. Official grading and live provider compatibility still need independent validation.
+**HumanEval** is available directly on Run evaluation. Basis downloads a SHA-256-verified dataset pinned to upstream revision `b9453e8f1865df0a0057a1383767caa400acfbcf`, selects a deterministic subset (seed 0, 1–50 tasks), and executes original held-out checks against each generated `solution.py`. The [upstream project](https://github.com/openai/human-eval) is historical and unmaintained. This adapter uses agent workflows rather than the original completion sampling harness: results are **not official leaderboard scores**.
+
+You can also add a local benchmark pack by absolute path. Paths within the pack are relative to the manifest. Each benchmark task must have independent checks:
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "Team Python benchmark",
+  "revision": "2026-10-22",
+  "source": "https://example.com/benchmark-source",
+  "tasks": [{
+    "name": "Implement input validation",
+    "acceptance": "Reject invalid input and preserve valid input.",
+    "sourcePath": "cases/validation/source",
+    "checksPath": "cases/validation/checks",
+    "checkCommand": "python3 /checks/test_validation.py"
+  }]
+}
+```
+
+Checks run with `/work` as their working directory; `/checks` contains the immutable checks. Python checks can load `/work/solution.py` using `runpy.run_path`. No paid call is needed to validate the pack format. Up to five packs and 100 combined tasks are allowed. Manifest revisions, SHA-256 digests, exact tasks, and input digests are saved with the run.
+
+**Results → Imported benchmark reports** retains support for authentic external reports. SWE-bench and Terminal-Bench still require their own official harnesses; Basis does not mislabel local packs as those official evaluations. See [SWEBENCH_SETUP.md](SWEBENCH_SETUP.md) for retained command-line tooling.
 
 ## How it works
 
@@ -120,7 +156,7 @@ flowchart LR
     Setup[Set up services and tasks] --> App[Local browser workspace]
     App <-->|Credential status| Companion[Local companion]
     Companion <-->|Keys| Vault[OS credential store]
-    Companion --> Containers[Isolated sample-task containers]
+    Companion --> Containers[Isolated task and benchmark containers]
     Containers --> Reports[Automated check summaries]
     Reports --> Companion
     Companion -->|Automatic progress and results| App
@@ -134,7 +170,7 @@ Use Node.js 22, matching CI, and Python 3. Browser checks additionally require P
 ```sh
 # Core logic, benchmark report validation, and deterministic sampling
 npm test
-python3 -m unittest discover -s tests -p test_sampling.py -v
+python3 -m unittest discover -s tests -p 'test_*.py' -v
 
 # JavaScript syntax checks
 node --check app.js
@@ -147,12 +183,14 @@ python -m pip install playwright
 python -m playwright install chromium
 python tests/ui_test.py
 python tests/local_ui_test.py
-python -m unittest discover -s tests -p test_credential_companion.py -v
+python tests/benchmark_ui_test.py
+# Optional real Docker checks; uses a test-only agent, never a provider API
+python tests/container_evaluation_test.py
 ```
 
 On Linux runners, install browser system dependencies with `python -m playwright install --with-deps chromium`.
 
-The main browser check covers grouped navigation, shared credential detection, local run prerequisites, automatic results, scenario cost editing, task creation, governance persistence, mobile overflow, responsive navigation, and page errors. Screenshots are saved to the ignored `test-results/ui/` directory.
+The main browser check covers grouped navigation, shared credential detection, local run prerequisites, automatic results, task creation, frozen plan execution, benchmark evidence selection, human review, governance persistence, mobile overflow, responsive navigation, and page errors. Screenshots are saved to the ignored `test-results/ui/` directory.
 
 ### Project layout
 
@@ -165,7 +203,7 @@ benchmarks.js              Benchmark catalog and report validation
 styles.css                 Neutral workspace theme and responsive layouts
 brand.svg                  Precision star mark and browser icon
 scripts/                   Agent execution, grading, sampling, and helpers
-fixtures/agent_task/       Public coding task for integration runs
+fixtures/agent_task/       Legacy fixture for standalone CLI development
 benchmark-tests/           Checks used by the agent evaluation pipeline
 tests/                     JavaScript, Python, and browser checks
 .github/workflows/         Deployment, tests, and source health checks

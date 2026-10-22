@@ -1,0 +1,102 @@
+import json
+import pathlib
+import subprocess
+import sys
+import tempfile
+import threading
+import unittest
+from unittest.mock import patch
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'scripts'))
+from local_evaluation import EvaluationRunner, copy_source, benchmark_pack
+from credential_companion import required_key, ALLOWED
+
+class Vault:
+    def get_password(self, service, name): return 'test-secret-never-real'
+
+class EvaluationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.base = pathlib.Path(self.temp.name)
+        self.runner = EvaluationRunner(self.base/'state', self.base, Vault, lambda:True, required_key, ALLOWED)
+        self.plan = {'setup':{'meta':{'name':'Original'},'platforms':[{'id':'codex','name':'Codex','model':'test-model','enabled':True}],
+                             'tasks':[{'id':'T1','name':'Implement greeting','acceptance':'Return hello'}],
+                             'org':{'privacy':'Public source only'},'gates':[{'id':'retention','name':'Retention','required':True}], 'gateResults':{}},'timeoutSeconds':30}
+    def tearDown(self): self.temp.cleanup()
+    def start_paused(self, plan=None):
+        with patch('local_evaluation.threading.Thread'):
+            return self.runner.start(plan or self.plan, True)
+    def test_snapshot_history_and_reviews(self):
+        job=self.start_paused()
+        self.plan['setup']['tasks'][0]['name']='Changed later'
+        commands=[]
+        def container(*args):
+            commands.append(args)
+            (args[0]/'solution.py').write_text("print('hello')")
+            return 0
+        with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',side_effect=container):
+            self.runner.execute([('codex','test-model','OPENAI_API_KEY','test-secret-never-real')])
+        job=self.runner.snapshot()
+        self.assertEqual(job['status'],'completed')
+        self.assertEqual(job['plan']['tasks'][0]['name'],'Implement greeting')
+        self.assertIsNone(job['results'][0]['checkPassed'])
+        self.assertIsNone(job['results'][0]['accepted'])
+        self.assertEqual(job['plan']['setup']['gateResults'],{})
+        self.assertEqual(len(self.runner.history()),1)
+        self.runner.review(job['id'],'0:codex',{'accepted':True,'notes':'Inspected source','humanMinutes':2,'usageCost':None})
+        restored=EvaluationRunner(self.base/'state',self.base,Vault,lambda:True,required_key,ALLOWED)
+        self.assertTrue(restored.snapshot()['reviews']['0:codex']['accepted'])
+        self.assertIsNone(restored.snapshot()['results'][0]['accepted'])
+        self.assertNotIn('test-secret-never-real',self.runner.file.read_text())
+        self.assertTrue((pathlib.Path(job['results'][0]['folder'])/'solution.py').exists())
+    def test_source_is_copied_and_checks_immutable(self):
+        source=self.base/'source';source.mkdir();(source/'input.py').write_text('BASE=1')
+        (source/'.env').write_text('NEVER_COPY=secret')
+        checks=self.base/'checks';checks.mkdir();(checks/'test.py').write_text('assert True')
+        self.plan['setup']['tasks'][0].update(sourcePath=str(source),checksPath=str(checks),checkCommand='python3 /checks/test.py')
+        job=self.start_paused();(source/'input.py').write_text('BASE=2')
+        copied=pathlib.Path(job['folder'])/'inputs/0/source'
+        self.assertEqual((copied/'input.py').read_text(),'BASE=1');self.assertFalse((copied/'.env').exists())
+        calls=[]
+        with patch.object(self.runner,'command',side_effect=lambda args,*a,**kw:calls.append((args,a,kw)) or 0),patch.object(self.runner,'remove_container'):
+            self.runner.container(copied,checks,['agent','codex','','prompt'],30,'OPENAI_API_KEY','test-secret-never-real')
+            self.runner.container(copied,checks,['check','python3 /checks/test.py'],30)
+        agent,verifier=calls
+        self.assertIn('--read-only',agent[0]);self.assertNotIn('test-secret-never-real',' '.join(agent[0]))
+        self.assertNotIn('target=/checks', ' '.join(agent[0]))
+        self.assertIn('target=/checks,readonly',' '.join(verifier[0]));self.assertIn('--network=none',verifier[0])
+        self.assertNotIn('OPENAI_API_KEY',verifier[1][1])
+    def test_partial_run_keeps_failed_attempt(self):
+        self.start_paused()
+        with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',side_effect=subprocess.TimeoutExpired('docker',30)):
+            self.runner.execute([('codex','','OPENAI_API_KEY','test-secret')])
+        self.assertEqual(self.runner.snapshot()['status'],'partial')
+        self.assertEqual(self.runner.snapshot()['results'][0]['status'],'timeout')
+    def test_cancel_preserves_evidence_and_skips_remaining(self):
+        self.plan['setup']['tasks'].append({'id':'T2','name':'Second','acceptance':'Works'})
+        self.start_paused()
+        def cancel(*args):
+            self.runner.stop()
+            raise InterruptedError()
+        with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',side_effect=cancel):
+            self.runner.execute([('codex','','OPENAI_API_KEY','test-secret')])
+        self.assertEqual(self.runner.snapshot()['status'],'stopped')
+        self.assertEqual(len(self.runner.snapshot()['results']),1)
+    def test_validation_and_benchmark_pack(self):
+        checks=self.base/'checks';checks.mkdir();(checks/'check.py').write_text('assert True')
+        pack=self.base/'pack.json';pack.write_text(json.dumps({'schemaVersion':1,'name':'External','revision':'v1','tasks':[{'name':'Case','acceptance':'Works','checksPath':'checks','checkCommand':'python3 /checks/check.py'}]}))
+        self.assertEqual(benchmark_pack(str(pack))['tasks'][0]['checksPath'],str(checks.resolve()))
+        self.plan['benchmarkPaths']=[str(pack)]
+        job=self.start_paused()
+        self.assertEqual(job['total'],2);self.assertEqual(job['plan']['tasks'][1]['sourceKind'],'benchmark')
+        self.assertEqual(len(job['plan']['benchmarks'][0]['manifestDigest']),64)
+        with self.assertRaises(ValueError):self.runner.start(self.plan,True)
+        with self.assertRaises(ValueError):self.runner.review('../../outside','0:codex',{})
+    def test_restart_marks_unfinished_interrupted(self):
+        self.start_paused()
+        restored=EvaluationRunner(self.base/'state',self.base,Vault,lambda:True,required_key,ALLOWED)
+        self.assertEqual(restored.history()[0]['status'],'interrupted')
+    def test_symlinks_rejected(self):
+        source=self.base/'source';source.mkdir();(source/'secret').symlink_to('/etc/passwd')
+        with self.assertRaises(ValueError):copy_source(str(source),self.base/'copy')
+
+if __name__=='__main__':unittest.main()

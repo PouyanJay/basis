@@ -3,9 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 git cur
 RUN npm install -g @anthropic-ai/claude-code @openai/codex opencode-ai
 RUN curl -fsSL https://cursor.com/install -o /tmp/cursor-install.sh && HOME=/opt/cursor bash /tmp/cursor-install.sh && chmod -R a+rX /opt/cursor && rm /tmp/cursor-install.sh
 ENV PATH="/opt/cursor/.local/bin:${PATH}"
-COPY scripts/run_agent.py scripts/local_container.py /opt/basis/scripts/
-COPY fixtures/agent_task /opt/basis/fixtures/agent_task
-COPY benchmark-tests/agent_task /opt/basis/benchmark-tests/agent_task
+COPY scripts/evaluation_container.py /opt/basis/scripts/
 USER node
 WORKDIR /work
-ENTRYPOINT ["python3", "/opt/basis/scripts/local_container.py"]
+ENTRYPOINT ["python3", "/opt/basis/scripts/evaluation_container.py"]
