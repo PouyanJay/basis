@@ -608,3 +608,10 @@ textarea:focus, select:focus,
 .taskgrid:empty { display: none; }
 /* Prerequisites inside a card are content sections, not nested cards. */
 .panel > .empty { margin: 20px 0; padding: 20px 0 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+.local-credential, .local-run-service, .local-result { padding: 20px 0; border-top: 1px solid var(--line); }
+.local-credential .fullfield, .local-run-service .fullfield { max-width: 650px; margin-bottom: 14px; }
+.local-credentials { margin: 20px 0; }
+.local-consent { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0; color: var(--soft); font-size: 13px; }
+.local-consent input { width: 18px; height: 18px; min-height: 0; flex-shrink: 0; accent-color: var(--violet); }
+.panel pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.8; }
+.local-result .pill { margin-left: 12px; }

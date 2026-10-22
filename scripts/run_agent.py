@@ -20,12 +20,12 @@ if True:
   expected={'claude':'ANTHROPIC_API_KEY','cursor':'CURSOR_API_KEY','codex':'OPENAI_API_KEY','opencode':'OPENCODE_MODEL_KEY'}[args.vendor]
   # OpenCode supports different providers; map selected provider key before invoking.
   if args.vendor=='opencode': expected='ANTHROPIC_API_KEY' if args.model.startswith('anthropic/') else 'OPENAI_API_KEY'
-  if not os.environ.get(expected): P.error('Missing provider secret; set it through GitHub Actions secrets')
+  if not os.environ.get(expected): P.error('Missing provider secret; configure it in Basis Settings')
 prompt=(workspace/'TASK.md').read_text(encoding='utf8') + '\nImplement the task in this working directory. Do not alter TASK.md. Do not use external repositories.'
 commands={
  'claude':['claude','-p',prompt,'--permission-mode','bypassPermissions'],
  'cursor':['cursor-agent','-p','--force','--output-format','text',prompt],
- 'codex':['codex','exec','--full-auto',prompt],
+ 'codex':['codex','exec','--dangerously-bypass-approvals-and-sandbox' if os.environ.get('BASIS_ISOLATED_RUNNER')=='1' else '--full-auto',prompt],
  'opencode':['opencode','run','--standalone','--agent','build',prompt]
 }
 cmd=commands[args.vendor][:]
@@ -37,7 +37,7 @@ start=time.monotonic(); error=''; code=None; timedout=False
 try:
   r=subprocess.run(cmd,cwd=workspace,timeout=args.timeout,capture_output=True,text=True,check=False)
   code=r.returncode
-  if code: error='Agent exited with nonzero status; consult private Actions log.'
+  if code: error='Agent exited with nonzero status; check the configured key and model, then retry.'
 except subprocess.TimeoutExpired:
   timedout=True;error='Agent exceeded time limit.'
 except FileNotFoundError:
@@ -47,7 +47,7 @@ except FileNotFoundError:
 passed=False;verify_code=None
 if not timedout and code==0:
   try:
-    v=subprocess.run([sys.executable,'-m','unittest','discover','-s',str(pathlib.Path(__file__).resolve().parents[1]/'benchmark-tests'/'agent_task'),'-v'],cwd=workspace,timeout=90,capture_output=True,text=True,env={**os.environ,'PYTHONPATH':str(workspace)})
+    v=subprocess.run([sys.executable,'-m','unittest','discover','-s',str(pathlib.Path(__file__).resolve().parents[1]/'benchmark-tests'/'agent_task'),'-v'],cwd=workspace,timeout=90,capture_output=True,text=True,env={**{k:v for k,v in os.environ.items() if k not in ('ANTHROPIC_API_KEY','OPENAI_API_KEY','CURSOR_API_KEY')},'PYTHONPATH':str(workspace)})
     verify_code=v.returncode;passed=v.returncode==0
   except subprocess.TimeoutExpired: error='Verifier timed out.'
 result={'schemaVersion':2,'type':'basis-agent-evaluation','recordKind':'automated-test','candidate':args.vendor,'model':args.model or 'provider-default','task':'agent_task','taskDigest':hashlib.sha256((workspace/'TASK.md').read_bytes()).hexdigest(),'agentExitCode':code,'agentTimedOut':timedout,'verifierExitCode':verify_code,'automatedTestsPass':passed,'accepted':False,'humanReview':'required','elapsedSeconds':round(time.monotonic()-start,2),'timeRecordedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provenance':'CI runner execution; no independent human code review','error':error}

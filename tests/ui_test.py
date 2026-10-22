@@ -94,29 +94,13 @@ with sync_playwright() as p:
  assert page.get_by_role('listbox').count()==0
  assert risk.get_attribute('aria-expanded')=='false'
  navigate('Run tests')
- page.evaluate('window.open = (url) => { window.openedURL = url; }')
- page.get_by_role('button',name='Open repository secrets ↗',exact=True).click()
- assert 'owner/repository' in page.locator('#repo-guidance').inner_text()
- assert 'owner/repository' in page.locator('#secrets-guidance').inner_text()
- assert page.locator('#evaluation-repo').get_attribute('aria-invalid')=='true'
-
- page.get_by_role('button',name='Open test workflow ↗',exact=True).click()
- assert 'Enter your GitHub repository' in page.locator('#run-guidance').inner_text()
- page.locator('#evaluation-repo').fill('example/basis')
- page.get_by_role('button',name='Open repository secrets ↗',exact=True).click()
- assert page.evaluate('window.openedURL')=='https://github.com/example/basis/settings/secrets/actions'
- assert page.locator('#secrets-guidance a').get_attribute('href')=='https://github.com/example/basis/settings/secrets/actions'
- assert page.locator('#evaluation-repo').get_attribute('aria-invalid') is None
-
- page.get_by_role('button',name='Open test workflow ↗',exact=True).click()
- assert page.evaluate('window.openedURL')=='https://github.com/example/basis/actions/workflows/agent-benchmark.yml'
+ assert page.get_by_role('button',name='Run selected services',exact=True).is_disabled()
+ assert page.locator('[data-act="open-fixture-actions"]').count()==0
+ navigate('Set up','Credentials')
+ assert page.get_by_role('heading',name='Credentials',exact=True).is_visible()
+ assert page.locator('[data-local-key]').count()>=1
  navigate('Run tests','External benchmarks')
- assert page.locator('#swe-repo').input_value()=='example/basis'
- page.get_by_role('button',name='Open GitHub Actions ↗',exact=True).click()
- assert page.evaluate('window.openedURL')=='https://github.com/example/basis/actions/workflows/swebench-lite.yml'
- with page.expect_download() as download:
-  page.get_by_role('button',name='Download run configuration',exact=True).click()
- assert download.value.suggested_filename=='basis-swebench-lite-run.json'
+ assert page.get_by_role('heading',name='External benchmarks',exact=True).is_visible()
  page.set_viewport_size({'width':390,'height':844})
  page.evaluate('render()')
  page.screenshot(path=str(SCREENSHOTS/'mobile.png'),full_page=True)
@@ -143,4 +127,4 @@ with sync_playwright() as p:
  assert page.evaluate("localStorage.getItem('unrelated-setting')")=='keep'
  assert not errors,errors
  browser.close()
-print('PLAYWRIGHT UI TESTS PASSED: grouped navigation, workflow handoff, config download, scenario cost, task creation, gate persistence, mobile navigation, zero page errors')
+print('PLAYWRIGHT UI TESTS PASSED: grouped navigation, local-run prerequisites, credential navigation, scenario cost, task creation, gate persistence, mobile navigation, zero page errors')

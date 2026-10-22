@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "python3 -m http.server 8000",
+    "start": ".venv/bin/python scripts/credential_companion.py",
     "test": "node --test tests/*.test.js"
   }
 }
