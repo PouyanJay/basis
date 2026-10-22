@@ -168,7 +168,29 @@ try:
   out=ROOT/'test-results/local';out.mkdir(parents=True,exist_ok=True)
   page.screenshot(path=str(out/'settings-desktop.png'),full_page=True)
   nav('Run evaluation');page.locator('#evaluation-progress').wait_for()
+  assert page.locator('.run-phases .current').inner_text().endswith('Finish')
+  console=page.locator('[data-console]').filter(has_text='Claude Code').first
+  console.locator('summary').click()
+  page.wait_for_timeout(2800)
+  assert console.get_attribute('open') is not None
+  assert 'Starting task' in console.locator('pre').inner_text()
+  console.locator('[data-follow]').uncheck()
+  with page.expect_download() as downloaded:
+   console.locator('[data-download-log]').click()
+  assert downloaded.value.suggested_filename=='basis-activity.txt'
   page.screenshot(path=str(out/'run-desktop.png'),full_page=True)
+  finished=runner.snapshot()
+  for status,phase,message in [('preparing','prepare','Downloading agent tools'),('running','agent','Running Claude Code'),('running','check','Checking Claude Code'),('failed','check','Runner failed')]:
+   runner.update(status=status,phase=phase,message=message,finishedAt=None if status in ('preparing','running') else time.time(),currentAgent='claude',currentTask=0,results=[])
+   page.locator('h1').click()
+   page.wait_for_timeout(2800)
+   assert page.locator('#evaluation-progress .run-heading').inner_text().find(message)>=0 or status=='failed'
+   if status in ('preparing','running'):
+    assert page.locator('#evaluation-progress .status-led.is-active').count()>0
+   page.screenshot(path=str(out/f'progress-{phase}-{status}.png'),full_page=True)
+  runner.update(**finished)
+  page.wait_for_timeout(2800)
+
   page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(400)
   assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
   page.screenshot(path=str(out/'run-mobile.png'),full_page=True)

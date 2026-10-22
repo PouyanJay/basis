@@ -243,3 +243,11 @@ Under **Set up → Services & criteria**, save a provider key first. The local c
 - OpenCode: choose OpenAI or Anthropic, save that provider's key, then select a returned model. Basis adds the required provider prefix.
 
 There are no static model lists or fallback aliases. Saved models absent from the returned catalog require reselection. Provider catalogs report API visibility, not a successful coding-agent execution: some listed models may be unsuitable for a particular CLI, and quota or runtime compatibility can still fail during a run. Discovery makes no generation requests. Custom services have no discovery adapter.
+
+### Live run activity
+
+Run evaluation shows preparation, task execution, checks, elapsed time, and completed attempt counts. Benchmarks and execution limits share a two-column layout on desktop. Active status lights pulse gently and respect reduced-motion preferences.
+
+Expand Runner setup or an individual service to inspect its output, follow new lines, copy, or download the retained log. Claude Code uses its [documented streaming output](https://code.claude.com/docs/en/headless); Basis displays public text and tool names, not thinking blocks or initialization payloads. Quiet periods mean the process has not emitted output, not that progress has been estimated.
+
+Activity retains the latest 300 lines across the run (up to 2,000 characters each); oversized lines are omitted. Active provider keys and common credential patterns are redacted before storage. Redaction cannot identify every possible sensitive value in arbitrary task output; review logs before sharing. Older runs have no captured console output. Restart the local companion after updating to enable activity capture for new runs.

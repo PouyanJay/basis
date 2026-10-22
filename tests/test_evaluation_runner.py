@@ -25,6 +25,37 @@ class EvaluationTests(unittest.TestCase):
     def start_paused(self, plan=None):
         with patch('local_evaluation.threading.Thread'):
             return self.runner.start(plan or self.plan, True)
+    def test_output_stream_redacts_split_secret_and_bounds_history(self):
+        self.start_paused()
+        self.runner._secrets = ['secret-example-123']
+        code = "import os,time;os.write(1,b'secret-example-');time.sleep(.05);os.write(1,b'123\\nhello\\n');time.sleep(.3)"
+        worker = threading.Thread(target=lambda:self.runner.command([sys.executable, '-c', code], 3))
+        worker.start()
+        import time
+        deadline = time.time()+2
+        while not self.runner.snapshot().get('activity') and time.time()<deadline:
+            time.sleep(.01)
+        self.assertTrue(worker.is_alive(), 'Output must arrive before process exit')
+        worker.join()
+        output = json.dumps(self.runner.snapshot()['activity'])
+        self.assertIn('[REDACTED]', output)
+        self.assertNotIn('secret-example', output)
+        self.assertNotIn('secret-example', self.runner.file.read_text())
+        for i in range(400): self.runner.output(str(i))
+        self.assertEqual(len(self.runner.snapshot()['activity']),300)
+        self.assertTrue(self.runner.snapshot()['activityTruncated'])
+
+    def test_claude_output_excludes_private_and_initialization_payloads(self):
+        self.start_paused()
+        self.runner._stream='claude'
+        self.runner.update(phase='agent')
+        self.runner.output(json.dumps({'type':'assistant','message':{'content':[{'type':'thinking','thinking':'PRIVATE'},{'type':'tool_use','name':'Read','input':{'secret':'PRIVATE'}},{'type':'text','text':'Public update'}]}}))
+        self.runner.output(json.dumps({'type':'system','subtype':'init','environment':'PRIVATE'}))
+        output=json.dumps(self.runner.snapshot()['activity'])
+        self.assertNotIn('PRIVATE',output)
+        self.assertIn('Tool: Read',output)
+        self.assertIn('Public update',output)
+
     def test_snapshot_history_and_reviews(self):
         job=self.start_paused()
         self.plan['setup']['tasks'][0]['name']='Changed later'

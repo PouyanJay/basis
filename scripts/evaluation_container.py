@@ -10,7 +10,7 @@ def main():
         return subprocess.call(['/bin/sh', '-c', sys.argv[2]], cwd='/work')
     agent, model, prompt = sys.argv[2:5]
     commands = {
-        'claude': ['claude', '-p', prompt, '--permission-mode', 'bypassPermissions'],
+        'claude': ['claude', '-p', prompt, '--permission-mode', 'bypassPermissions', '--output-format', 'stream-json', '--verbose'],
         'codex': ['codex', 'exec', '--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox', prompt],
         'cursor': ['cursor-agent', '-p', '--force', '--trust', '--output-format', 'text', prompt],
         'opencode': ['opencode', 'run', '--pure', '--auto', '--agent', 'build', prompt],

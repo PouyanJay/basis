@@ -95,7 +95,7 @@ class EvaluationRunner:
                 if self.job['status'] in ACTIVE:
                     if re.fullmatch(r'basis-[a-f0-9]{32}', self.job.get('container') or ''):
                         self.remove_container(self.job['container'])
-                    self.update(status='interrupted', message='The local companion stopped. Completed evidence is preserved.', container=None)
+                    self.update(status='interrupted', finishedAt=time.time(), message='The local companion stopped. Completed evidence is preserved.', container=None)
             except (ValueError, KeyError):
                 self.job = None
 
@@ -135,7 +135,7 @@ class EvaluationRunner:
             if self.process:
                 self.process.terminate()
             container = self.job.get('container')
-            self.update(status='stopped', message='Stopped. Completed attempts are preserved; remaining attempts were not run.')
+            self.update(status='stopped', finishedAt=time.time(), message='Stopped. Completed attempts are preserved; remaining attempts were not run.')
         if container:
             self.remove_container(container)
         return self.snapshot()
@@ -240,20 +240,84 @@ class EvaluationRunner:
             self.cancel.clear()
             self.job = {'id': run_id, 'status': 'preparing', 'startedAt': time.time(), 'plan': plan,
                         'folder': str(directory), 'results': [], 'total': len(tasks) * len(services),
+                        'phase': 'prepare', 'activity': [],
                         'message': 'Preparing isolated runner tools. First use can take several minutes.'}
             self.update()
             self.worker = threading.Thread(target=self.execute, args=(prepared,), daemon=True)
             self.worker.start()
             return self.snapshot()
 
+    def output(self, line):
+        # Render only public Claude messages and tool names, never thinking blocks
+        # or the raw initialization payload (which can include environment data).
+        if getattr(self, '_stream', '') == 'claude' and self.job.get('phase') == 'agent' and line.lstrip().startswith('{'):
+            try:
+                event = json.loads(line)
+                if event.get('type') == 'assistant':
+                    parts = event.get('message', {}).get('content', [])
+                    line = ' | '.join(str(p.get('text', '')) if p.get('type') == 'text' else 'Tool: ' + str(p.get('name', '')) for p in parts if p.get('type') in ('text', 'tool_use'))
+                elif event.get('type') == 'result':
+                    line = str(event.get('result') or event.get('subtype') or 'Agent finished')
+                elif event.get('type') == 'system' and event.get('subtype') == 'init':
+                    line = 'Claude Code connected'
+                else:
+                    return
+            except (ValueError, AttributeError, TypeError):
+                return
+        # Redact before truncation, storage, or exposure to the browser.
+        line = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', line)
+        for secret in getattr(self, '_secrets', []):
+            if secret:
+                line = line.replace(secret, '[REDACTED]')
+        line = re.sub(r'(?i)(bearer\s+|(?:api[_-]?key|authorization)\s*[:=]\s*)\S+', r'\1[REDACTED]', line)
+        line = re.sub(r'sk-[A-Za-z0-9_-]+', '[REDACTED]', line)
+        line = ''.join(c for c in line if c >= ' ' or c == '\t')
+        if not line.strip():
+            return
+        with self.lock:
+            entry = {'time': time.time(), 'stream': getattr(self, '_stream', 'setup'), 'text': line[:2000]}
+            activity = self.job.setdefault('activity', [])
+            activity.append(entry)
+            if len(activity) > 300:
+                del activity[:-300]
+                self.job['activityTruncated'] = True
+            self.job['lastOutputAt'] = entry['time']
+            if entry['time'] - getattr(self, '_last_activity_save', 0) >= 1:
+                self._last_activity_save = entry['time']
+                self.update()
+
+    def read_output(self, pipe):
+        # A bounded line buffer also handles secrets split across read chunks.
+        buffer = bytearray()
+        dropping = False
+        while True:
+            chunk = os.read(pipe.fileno(), 4096)
+            if not chunk:
+                break
+            for byte in chunk:
+                if byte in (10, 13):
+                    if buffer and not dropping:
+                        self.output(buffer.decode('utf-8', errors='replace'))
+                    buffer.clear()
+                    dropping = False
+                elif not dropping:
+                    buffer.append(byte)
+                    if len(buffer) > 32768:
+                        buffer.clear()
+                        dropping = True
+                        self.output('[Oversized output line omitted]')
+        if buffer and not dropping:
+            self.output(buffer.decode('utf-8', errors='replace'))
+
     def command(self, args, timeout, env=None):
         if self.cancel.is_set():
             raise InterruptedError()
-        # Do not persist untrusted process output, which may contain provider credentials.
         with self.lock:
             if self.cancel.is_set():
                 raise InterruptedError()
-            self.process = subprocess.Popen(args, cwd=self.root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.process = subprocess.Popen(args, cwd=self.root, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            reader = threading.Thread(target=self.read_output, args=(self.process.stdout,), daemon=True)
+            reader.start()
         try:
             code = self.process.wait(timeout=timeout)
             if self.cancel.is_set():
@@ -264,8 +328,12 @@ class EvaluationRunner:
             self.process.wait()
             raise
         finally:
+            reader.join(timeout=2)
+            if not reader.is_alive():
+                self.process.stdout.close()
             with self.lock:
                 self.process = None
+                self.update()
 
     def container(self, work, checks, args, timeout, key=None, value=None):
         name = 'basis-' + uuid.uuid4().hex
@@ -289,8 +357,10 @@ class EvaluationRunner:
             self.update(container=None)
 
     def execute(self, prepared):
+        self._secrets = [row[3] for row in prepared]
+        self._stream = 'setup'
         try:
-            if self.command(['docker', 'build', '-t', 'basis-local-runner:v2', '-f', 'scripts/local-runner.Dockerfile', '.'], 900):
+            if self.command(['docker', 'build', '--progress=plain', '-t', 'basis-local-runner:v2', '-f', 'scripts/local-runner.Dockerfile', '.'], 900):
                 raise RuntimeError('Could not build the runner. Check Docker and network connectivity.')
             plan = self.job['plan']
             directory = Path(self.job['folder'])
@@ -304,7 +374,9 @@ class EvaluationRunner:
                     prompt = {'task': task['name'], 'acceptance': task['acceptance'], 'teamContext': plan['setup'].get('org', {}),
                               'requirements': plan['setup'].get('gates', []), 'instructions': 'Work in /work. Implement the task. Do not alter /checks. Policy requirements need human evidence and cannot be certified by this run.'}
                     # Pass the prompt as an argument, never a file that an agent can replace before launch.
-                    self.update(status='running', message=f"Running {agent}: {task['name']}")
+                    self._stream = agent
+                    self.output(f"Starting task: {task['name']}")
+                    self.update(status='running', phase='agent', currentAgent=agent, currentTask=task['index'], message=f"Running {agent}: {task['name']}")
                     started = time.time()
                     result = {'agent': agent, 'model': model or 'CLI default (not pinned)', 'taskIndex': task['index'], 'task': task['name'],
                               'sourceKind': task['sourceKind'], 'suite': task['suite'], 'folder': str(work), 'accepted': None,
@@ -313,13 +385,15 @@ class EvaluationRunner:
                         code = self.container(work, checks, ['agent', agent, model, json.dumps(prompt)], plan['timeoutSeconds'], key, value)
                         result.update(status='completed' if code == 0 else 'error', agentExitCode=code)
                         if code == 0 and task.get('checkCommand'):
-                            self.update(message=f"Checking {agent}: {task['name']}")
+                            self.output('Running independent checks')
+                            self.update(phase='check', message=f"Checking {agent}: {task['name']}")
                             check = self.container(work, checks, ['check', task['checkCommand']], plan['timeoutSeconds'])
                             result.update(checkPassed=check == 0, checkExitCode=check)
                     except subprocess.TimeoutExpired:
                         result['status'] = 'timeout'
                     except InterruptedError:
                         result['status'] = 'stopped'
+                    self.output(f"Attempt {result['status']}; checks: {result.get('checkPassed')}")
                     result['durationSeconds'] = round(time.time() - started, 2)
                     self.update(results=[*self.job['results'], result])
                     if self.cancel.is_set():
@@ -327,8 +401,9 @@ class EvaluationRunner:
             failed = any(r['status'] != 'completed' for r in self.job['results'])
             self.update(status='partial' if failed else 'completed', finishedAt=time.time(), message='Evaluation finished. Review checks and acceptance criteria; policy requirements still need documentary evidence.')
         except InterruptedError:
-            self.update(status='stopped', message='Stopped. Completed attempts are preserved.')
+            self.update(status='stopped', finishedAt=time.time(), message='Stopped. Completed attempts are preserved.')
         except Exception:
-            self.update(status='failed', message='Runner failed. Check Docker resources, source permissions, and network availability. Completed attempts are preserved.')
+            self.update(status='failed', finishedAt=time.time(), message='Runner failed. Check Docker resources, source permissions, and network availability. Completed attempts are preserved.')
         finally:
             prepared.clear()
+            self._secrets = []
