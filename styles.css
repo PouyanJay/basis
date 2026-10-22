@@ -11,7 +11,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .brandmark{width:37px;height:37px;display:grid;place-items:center;color:#eaebed;background:radial-gradient(circle at 25% 20%,#737476,#2f3032);border:1px solid #666769;border-radius:12px;font-size:28px}
 .brand b{font-family:'Inter',system-ui,sans-serif;font-size:29px;letter-spacing:-2px;line-height:1}
 .dot{color:var(--violet)}
-.brand small{display:block;font-size:8px;letter-spacing:1.9px;color:#8f9092;margin-top:5px}
 .sidetitle,.smallcaps{font-size:10px;font-weight:700;letter-spacing:1.8px;color:#8b8c8e}
 .sidetitle{margin:16px 14px 12px}
 .side nav{display:flex;flex-direction:column;gap:5px}
@@ -309,7 +308,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .brand { gap: 12px; padding: 0 12px 26px; }
 .brand-symbol { width: 42px; height: 42px; flex-shrink: 0; }
 .brand b { font-size: 31px; font-weight: 750; letter-spacing: -1.7px; }
-.brand small { font-size: 7px; line-height: 1.5; letter-spacing: 1.65px; color: #a5a7ae; max-width: 135px; }
 .sidetitle, .smallcaps { font-size: 9px; letter-spacing: 1.25px; color: #999ca4; font-weight: 600; }
 .sidetitle { margin: 8px 12px 12px; }
 .side nav { gap: 3px; }
