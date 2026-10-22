@@ -53,6 +53,7 @@ with sync_playwright() as p:
  risk.press('ArrowDown')
  risk.press('Home')
  risk.press('ArrowDown')
+ risk.press('ArrowDown')
  risk.press('Enter')
  assert page.locator('select[data-path="org.risk"]').input_value()=='medium'
  assert page.get_by_role('combobox',name='Risk profile',exact=True).inner_text()=='Standard governance'

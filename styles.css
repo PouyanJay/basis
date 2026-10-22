@@ -550,3 +550,7 @@ input[type=checkbox], input[type=radio] {
   .dropdown-trigger, .dropdown-trigger.status { min-height: 44px; }
   .dropdown-option { min-height: 44px; padding: 11px; }
 }
+
+/* Hints stay muted; entered values retain normal text contrast. */
+input::placeholder, textarea::placeholder { color: #898c96; opacity: 1; }
+.dropdown-trigger[data-placeholder=true] .dropdown-value { color: #898c96; }
