@@ -109,6 +109,35 @@ try:
   page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
   nav('Run evaluation')
   assert page.locator('.stage-navigation,.connection-strip').count()==0
+  # Details stay out of the form, but remain accessible by pointer, keyboard, and tap.
+  panel=page.locator('.benchmark-panel')
+  assert 'leaderboard' not in panel.inner_text()
+  page.evaluate("window.scrollTo(0,document.querySelector('.benchmark-panel').getBoundingClientRect().top+scrollY-60)")
+  page.screenshot(path=str(out/'benchmarks-desktop.png'))
+  help_button=page.get_by_role('button',name='About HumanEval',exact=True)
+  help_button.hover()
+  tooltip=page.get_by_role('tooltip');tooltip.wait_for()
+  assert tooltip.locator('strong').inner_text()=='HumanEval'
+  assert tooltip.locator('li').count()==2
+  tooltip.hover();page.wait_for_timeout(200);assert tooltip.is_visible()
+  page.screenshot(path=str(out/'benchmark-help-desktop.png'))
+  page.keyboard.press('Escape');assert page.get_by_role('tooltip').count()==0
+  help_button.focus();assert page.get_by_role('tooltip').is_visible()
+  page.keyboard.press('Escape');assert page.get_by_role('tooltip').count()==0
+  page.set_viewport_size({'width':390,'height':844})
+  page.wait_for_timeout(350)
+  page.evaluate("window.scrollTo(0,document.querySelector('.benchmark-panel').getBoundingClientRect().top+scrollY-24)")
+  page.screenshot(path=str(out/'benchmarks-mobile.png'))
+  page.get_by_role('button',name='About local benchmark packs',exact=True).click()
+  tooltip=page.get_by_role('tooltip');tooltip.wait_for()
+  box=tooltip.bounding_box()
+  assert box['x']>=0 and box['x']+box['width']<=390
+  assert box['y']>=0 and box['y']+box['height']<=844
+  page.screenshot(path=str(out/'benchmark-help-mobile.png'))
+  page.locator('#benchmark-pack-path').click()
+  assert page.get_by_role('tooltip').count()==0
+  assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+  page.set_viewport_size({'width':1440,'height':1000})
   page.locator('#benchmark-pack-path').fill(str(pack))
   page.locator('#add-benchmark-pack').click()
   page.locator('[data-remove-pack]').wait_for()
@@ -143,6 +172,15 @@ try:
   page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(400)
   assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
   page.screenshot(path=str(out/'run-mobile.png'),full_page=True)
+  touch=browser.new_page(viewport={'width':390,'height':844},has_touch=True,is_mobile=True)
+  touch.on('pageerror',lambda e:errors.append(str(e)))
+  touch.goto(f'http://127.0.0.1:{server.server_port}/')
+  touch.get_by_role('button',name='Toggle menu',exact=True).tap()
+  touch.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Run evaluation',exact=True).tap()
+  touch.get_by_role('button',name='About HumanEval',exact=True).tap()
+  assert touch.get_by_role('tooltip').is_visible()
+  touch.locator('#humaneval-count').tap()
+  assert touch.get_by_role('tooltip').count()==0
   assert not errors,errors
   browser.close()
 finally:

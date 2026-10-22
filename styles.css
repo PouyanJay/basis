@@ -617,7 +617,7 @@ textarea:focus, select:focus,
 .local-result .pill { margin-left: 12px; }
 /* Unified evaluation flow */
 .run-consent{display:flex;align-items:flex-start;gap:12px;margin:20px 0;color:var(--muted);line-height:1.6}.run-consent input{width:18px;height:18px;flex:0 0 18px;margin-top:4px;accent-color:#bc9cef}.pack-list{padding:0;list-style:none}.pack-list li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--border)}.pack-list code,.attempt-row code,.panelnote code{overflow-wrap:anywhere}.evaluation-attempts{display:grid;gap:0}.attempt-row{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:24px 0;border-bottom:1px solid var(--border)}.attempt-row:last-child{border-bottom:0}.attempt-row p{color:var(--muted);margin:8px 0}.attempt-row details{margin-top:12px}.plan-preview{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto;font-size:13px}#evaluation-progress progress{width:100%;height:8px;accent-color:#bc9cef}#evaluation-error,#benchmark-pack-feedback,#evaluation-readiness{margin-top:16px;color:var(--muted);line-height:1.6}@media(max-width:700px){.attempt-row{flex-direction:column}.pack-list li{align-items:flex-start}.run-consent{font-size:14px}}
-.benchmark-choice{padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid var(--border)}.benchmark-choice label{max-width:260px;margin-bottom:16px}
+
 /* Credentials: one compact connection bar and flat provider rows. */
 .connection-strip{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 20px;padding:14px 0;margin-bottom:24px;border-bottom:1px solid var(--line);font-size:13px}
 .connection-state,.connection-actions{display:flex;align-items:center;gap:12px}
@@ -700,3 +700,29 @@ textarea:focus, select:focus,
 .local-required #handoff-feedback:empty{display:none}
 
 .local-required-main{min-height:100svh}
+
+/* Optional benchmarks: flat rows, aligned controls, details on demand. */
+.benchmark-panel .panelheading{margin-bottom:0}
+.benchmark-row{display:grid;grid-template-columns:minmax(170px,.8fr) minmax(0,1.5fr);gap:24px;align-items:center;padding:24px 0;border-bottom:1px solid var(--line)}
+.benchmark-row-heading{display:flex;align-items:center;gap:8px}
+.benchmark-row-heading h4{margin:0;font-size:14px;font-weight:600}
+.benchmark-description p{margin:5px 0 0;color:var(--soft);font-size:12px}
+.benchmark-actions{display:flex;align-items:flex-end;gap:12px;min-width:0}
+.benchmark-actions label{display:grid;gap:8px;margin:0;min-width:0;flex:1;color:var(--soft);font-size:12px}
+.benchmark-actions input{margin:0;width:100%;height:42px;box-sizing:border-box}
+.benchmark-actions .secondary{height:42px;flex-shrink:0;white-space:nowrap}
+.benchmark-count-actions{justify-content:flex-end}
+.benchmark-count-actions label{flex:0 1 120px}
+.benchmark-footnote{margin:16px 0 0;font-size:12px;color:var(--soft)}
+.benchmark-panel #benchmark-pack-feedback:empty,.benchmark-panel .pack-list:empty{display:none}
+.context-help-button{height:28px;width:28px;padding:5px;color:var(--soft);border:1px solid transparent}
+.context-help-button:focus-visible{outline:none;border-color:#79658f;box-shadow:none}
+.context-help-popup{position:fixed;z-index:350;width:320px;max-width:calc(100vw - 24px);max-height:calc(100svh - 24px);overflow:auto;padding:18px;box-sizing:border-box;border:1px solid var(--control-border);border-radius:8px;background:var(--panel);box-shadow:0 8px 28px #0006;font-size:12px;line-height:1.65;color:var(--soft)}
+.context-help-popup strong{display:block;color:var(--control-text);font-size:14px;margin-bottom:8px}
+.context-help-popup p{margin:0 0 12px}
+.context-help-popup ul{padding-left:18px;margin:0 0 12px}
+.context-help-popup li+li{margin-top:6px}
+.context-help-popup .help-note{padding-top:12px;border-top:1px solid var(--line);margin-bottom:0}
+.context-help-popup code{overflow-wrap:anywhere}
+@media(max-width:1050px){.benchmark-row{grid-template-columns:1fr;gap:18px}.benchmark-count-actions{justify-content:flex-start}}
+@media(max-width:480px){.benchmark-actions{flex-wrap:wrap}.benchmark-actions label{flex-basis:100%}.benchmark-count-actions label{flex:1;max-width:140px}.benchmark-actions input{font-size:16px}.context-help-button{height:36px;width:36px}}
