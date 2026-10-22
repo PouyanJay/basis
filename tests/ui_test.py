@@ -45,6 +45,18 @@ with sync_playwright() as p:
  page.locator('select[data-gate="claude:retention"]').locator('..').get_by_role('combobox').click()
  page.get_by_role('option',name='Fail',exact=True).click()
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
+ page.get_by_role('button',name='Remove Claude Code from evaluation',exact=True).click()
+ assert page.locator('select[data-gate="claude:retention"]').count()==0
+ page.get_by_role('button',name='Include Claude Code in evaluation',exact=True).click()
+ assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
+ page.get_by_role('button',name='Add service',exact=True).click()
+ page.locator('.modal [name="name"]').fill('Team custom tool')
+ page.locator('.modal [name="provider"]').fill('Internal')
+ page.locator('.modal [name="mode"]').fill('CLI')
+ page.locator('.modal [name="model"]').fill('Pilot v1')
+ page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
+ assert page.get_by_role('combobox',name='Team custom tool: Data retention and training restrictions',exact=True).inner_text()=='Unverified'
+ page.get_by_role('button',name='Remove Team custom tool from evaluation',exact=True).click()
  page.evaluate('render()')
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
  navigate('Set up')

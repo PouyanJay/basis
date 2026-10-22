@@ -586,3 +586,18 @@ textarea:focus, select:focus,
 .dropdown-trigger:focus, .dropdown-trigger.status:focus {
  outline: none; box-shadow: none; border-color: #91839f;
 }
+
+.service-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-top: 18px; }
+.service-option { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 14px; text-align: left; border: 1px solid var(--control-border); border-radius: 6px; color: var(--control-text); background: var(--control-bg); }
+.service-option:hover { border-color: #77717f; }
+.service-option.selected { border-color: #665b76; background: #211f26; }
+.service-option:focus-visible { outline: none; border-color: #a696ba; }
+.service-option-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+.service-option-copy b { font-size: 13px; font-weight: 500; }
+.service-option-copy small { color: var(--soft); font-size: 11px; }
+.service-option-state { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--soft); flex-shrink: 0; }
+.service-option.selected .service-option-state { color: #c5b4dd; }
+@media(max-width:760px) {
+ .service-selection .panelheading { flex-wrap: wrap; gap: 12px; }
+ .service-options { grid-template-columns: 1fr; }
+}
