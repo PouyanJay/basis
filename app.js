@@ -242,6 +242,13 @@ function messageDialog(message,{title='Check your input',confirmLabel='Continue'
   dialog.addEventListener('close',()=>{const accepted=dialog.returnValue==='accept';dialog.remove();if(previous?.isConnected)previous.focus();resolve(accepted);},{once:true});
   dialog.querySelectorAll('[data-dismiss]').forEach(button=>button.onclick=()=>dialog.close());
   dialog.querySelector('[data-accept]').onclick=()=>dialog.close('accept');
+  dialog.addEventListener('keydown',event=>{
+   if(event.key!=='Tab')return;
+   const buttons=[...dialog.querySelectorAll('button:not(:disabled)')];
+   const first=buttons[0],last=buttons.at(-1);
+   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+  });
   dialog.showModal();
  });
 }
