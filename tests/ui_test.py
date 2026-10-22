@@ -95,9 +95,19 @@ with sync_playwright() as p:
  assert risk.get_attribute('aria-expanded')=='false'
  navigate('Run tests')
  page.evaluate('window.open = (url) => { window.openedURL = url; }')
+ page.get_by_role('button',name='Open repository secrets ↗',exact=True).click()
+ assert 'owner/repository' in page.locator('#repo-guidance').inner_text()
+ assert 'owner/repository' in page.locator('#secrets-guidance').inner_text()
+ assert page.locator('#evaluation-repo').get_attribute('aria-invalid')=='true'
+
  page.get_by_role('button',name='Open test workflow ↗',exact=True).click()
  assert 'Enter your GitHub repository' in page.locator('#run-guidance').inner_text()
  page.locator('#evaluation-repo').fill('example/basis')
+ page.get_by_role('button',name='Open repository secrets ↗',exact=True).click()
+ assert page.evaluate('window.openedURL')=='https://github.com/example/basis/settings/secrets/actions'
+ assert page.locator('#secrets-guidance a').get_attribute('href')=='https://github.com/example/basis/settings/secrets/actions'
+ assert page.locator('#evaluation-repo').get_attribute('aria-invalid') is None
+
  page.get_by_role('button',name='Open test workflow ↗',exact=True).click()
  assert page.evaluate('window.openedURL')=='https://github.com/example/basis/actions/workflows/agent-benchmark.yml'
  navigate('Run tests','External benchmarks')
