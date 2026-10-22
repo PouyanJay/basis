@@ -48,6 +48,10 @@ with sync_playwright() as p:
  page.evaluate('render()')
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
  navigate('Set up')
+ page.get_by_role('button',name='Increase Engineers',exact=True).click()
+ assert page.locator('[data-path="org.developers"]').input_value()=='1'
+ page.get_by_role('button',name='Decrease Engineers',exact=True).click()
+ assert page.locator('[data-path="org.developers"]').input_value()=='1'
  risk=page.get_by_role('combobox',name='Risk profile',exact=True)
  risk.focus()
  risk.press('ArrowDown')
@@ -89,12 +93,13 @@ with sync_playwright() as p:
  assert page.locator('select[data-path="org.risk"]').input_value()=='low'
  # Reset clears every evaluation store, but not unrelated origin data.
  page.evaluate("localStorage.setItem('unrelated-setting','keep');localStorage.setItem('basis-latest-agent-result',JSON.stringify({candidate:'codex'}));localStorage.setItem('basis-community-benchmark-imports','[]')")
- page.once('dialog',lambda dialog:dialog.dismiss())
  page.locator('[data-act="menu"]').first.click()
  page.get_by_role('button',name='Reset local evaluation',exact=True).click()
+ page.get_by_role('dialog').get_by_role('button',name='Cancel',exact=True).click()
  assert page.evaluate("localStorage.getItem('basis-latest-agent-result')") is not None
- page.once('dialog',lambda dialog:dialog.accept())
  page.get_by_role('button',name='Reset local evaluation',exact=True).click()
+ page.get_by_role('dialog').get_by_role('button',name='Reset evaluation',exact=True).click()
+ page.get_by_role('heading',name='Compare coding tools, step by step.',exact=True).wait_for()
  assert page.get_by_role('heading',name='Compare coding tools, step by step.',exact=True).count()==1
  assert page.evaluate("s.tasks.length===0 && s.runs.length===0")
  assert page.evaluate("EVALUATION_KEYS.filter(key=>key!==KEY).every(key=>localStorage.getItem(key)===null)")

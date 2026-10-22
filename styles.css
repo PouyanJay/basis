@@ -554,3 +554,35 @@ input[type=checkbox], input[type=radio] {
 /* Hints stay muted; entered values retain normal text contrast. */
 input::placeholder, textarea::placeholder { color: #898c96; opacity: 1; }
 .dropdown-trigger[data-placeholder=true] .dropdown-value { color: #898c96; }
+
+/* Consistent number steppers instead of operating-system spinner buttons. */
+input[type=number] { appearance: textfield; -moz-appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.number-field { position: relative; display: block; min-width: 0; width: 100%; }
+.number-field input[type=number] { width: 100%; padding-right: 42px; }
+.number-controls { position: absolute; right: 1px; top: 1px; bottom: 1px; width: 32px; display: grid; grid-template-rows: 1fr 1fr; border-left: 1px solid var(--control-border); }
+.number-step { display: flex; align-items: center; justify-content: center; padding: 0; min-height: 0; border: 0; border-radius: 0; background: transparent; color: var(--soft); cursor: pointer; }
+.number-step:first-child { border-radius: 0 5px 0 0; border-bottom: 1px solid var(--control-border); }
+.number-step:last-child { border-radius: 0 0 5px 0; }
+.number-step:hover { background: var(--selection-bg); color: var(--selection-text); }
+.number-step:focus-visible { outline: 2px solid var(--violet); outline-offset: -2px; }
+.number-step:disabled { opacity: .4; cursor: not-allowed; }
+.weightrow .number-field { width: 92px; flex-shrink: 0; }
+.message-dialog { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; margin: auto; padding: 24px; border: 1px solid var(--control-border); border-radius: 12px; background: var(--panel); color: var(--control-text); box-shadow: 0 24px 80px #0006; }
+.message-dialog::backdrop { background: #08090bb8; backdrop-filter: blur(3px); }
+.message-dialog .modalhead { margin-bottom: 16px; }
+.message-dialog h2 { font-size: 18px; }
+.message-dialog p { margin: 0; color: var(--soft); font-size: 13px; line-height: 1.8; }
+.message-dialog .modalbuttons { margin-top: 24px; }
+@media (pointer: coarse) {
+ .number-field input[type=number] { min-height: 48px; }
+ .number-controls { width: 36px; }
+}
+
+/* A single border carries focus on boxed controls, without an outer ring. */
+input:not([type=range]):not([type=checkbox]):not([type=radio]):focus,
+textarea:focus, select:focus,
+.dropdown-trigger:focus, .dropdown-trigger.status:focus {
+ outline: none; box-shadow: none; border-color: #91839f;
+}
