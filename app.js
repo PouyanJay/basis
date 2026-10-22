@@ -115,6 +115,7 @@ function enhanceSelects(root=document) {
   const wrapper=document.createElement('div');wrapper.className='dropdown';
   const label=select.labels?.[0]?.cloneNode(true);
   label?.querySelectorAll('select').forEach(node=>node.remove());
+  const optionLabel=option=>select.classList.contains('status')?option.textContent.replace(/^[?✓×]\s*/, ''):option.textContent;
   const name=select.getAttribute('aria-label')||label?.textContent.trim()||(select.dataset.filter?'Filter pilot runs':'Choose an option');
   const trigger=document.createElement('button');trigger.type='button';trigger.id=id;
   trigger.className='dropdown-trigger '+select.className;
@@ -122,7 +123,7 @@ function enhanceSelects(root=document) {
   trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-expanded','false');
   trigger.setAttribute('aria-controls',id+'-list');trigger.disabled=select.disabled;
   trigger.dataset.tone=select.classList.contains('status')?select.value:'';
-  const value=document.createElement('span');value.className='dropdown-value';value.id=id+'-value';trigger.setAttribute('aria-describedby',value.id);value.textContent=select.selectedOptions[0]?.textContent||'Choose an option';
+  const value=document.createElement('span');value.className='dropdown-value';value.id=id+'-value';trigger.setAttribute('aria-describedby',value.id);value.textContent=select.selectedOptions[0]?optionLabel(select.selectedOptions[0]):'Choose an option';
   trigger.append(value);trigger.insertAdjacentHTML('beforeend',icon('down',15));
   select.before(wrapper);wrapper.append(select,trigger);select.hidden=true;
   let search='',searchTime=0;
@@ -143,7 +144,7 @@ function enhanceSelects(root=document) {
    function choose(index) {
     if(options[index].disabled)return;
     closeDropdown();select.value=options[index].value;
-    value.textContent=options[index].textContent;
+    value.textContent=optionLabel(options[index]);
     trigger.dataset.tone=select.classList.contains('status')?select.value:'';
     select.dispatchEvent(new Event('change',{bubbles:true}));
     document.getElementById(id)?.focus({preventScroll:true});
@@ -152,7 +153,7 @@ function enhanceSelects(root=document) {
     const item=document.createElement('div');item.id=id+'-option-'+index;item.className='dropdown-option';
     item.setAttribute('role','option');item.setAttribute('aria-selected',String(option.selected));
     if(option.disabled)item.setAttribute('aria-disabled','true');
-    const text=document.createElement('span');text.textContent=option.textContent;item.append(text);
+    const text=document.createElement('span');text.textContent=optionLabel(option);item.append(text);if(select.classList.contains('status'))item.dataset.tone=option.value;
     item.insertAdjacentHTML('beforeend',icon('check',15));
     item.onpointermove=()=>{if(!option.disabled)highlight(index)};
     item.onpointerdown=e=>e.preventDefault();
@@ -166,7 +167,7 @@ function enhanceSelects(root=document) {
    const upward=below<Math.min(menu.scrollHeight,220)&&above>below;
    const available=Math.max(60,upward?above:below);
    menu.style.maxHeight=Math.min(280,available)+'px';
-   menu.style.width=Math.min(Math.max(rect.width,190),innerWidth-24)+'px';
+   menu.style.width=Math.min(rect.width,innerWidth-24)+'px';
    menu.style.left=Math.max(12,Math.min(rect.left,innerWidth-menu.offsetWidth-12))+'px';
    menu.style.top=(upward?Math.max(6,rect.top-menu.offsetHeight-6):rect.bottom+6)+'px';
    }

@@ -14,6 +14,7 @@ jobs:
         with: {node-version: '22'}
       - run: npm test
       - run: python3 -m unittest discover -s tests -p test_sampling.py -v
+      - run: python3 -m unittest discover -s tests -p test_stage_site.py -v
       - run: node --check app.js && node --check technology.js
       - name: Browser QA
         run: |
@@ -21,9 +22,7 @@ jobs:
           python -m playwright install --with-deps chromium
           python tests/ui_test.py
       - name: Stage public static application only
-        run: |
-          mkdir -p public-site
-          cp index.html app.js core.js technology.js benchmarks.js styles.css brand.svg public-site/
+        run: python3 scripts/stage_site.py --out public-site
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public-site

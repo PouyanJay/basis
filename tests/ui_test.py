@@ -43,7 +43,7 @@ with sync_playwright() as p:
  assert 'Browser UI test task' in page.locator('body').inner_text()
  navigate('Set up','Requirements')
  page.locator('select[data-gate="claude:retention"]').locator('..').get_by_role('combobox').click()
- page.get_by_role('option',name='× Fail',exact=True).click()
+ page.get_by_role('option',name='Fail',exact=True).click()
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
  page.evaluate('render()')
  assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
