@@ -653,7 +653,6 @@ textarea:focus, select:focus,
 .service-config-note{font-size:12px;color:var(--soft);margin:22px 0 0;line-height:1.6}
 .available-services{display:flex;flex-wrap:wrap;gap:8px;padding-top:16px;border-top:1px solid var(--line)}
 .available-services:empty{display:none}
-.service-config-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:20px;font-size:12px}
 .setup-handoff{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:24px 0;border-top:1px solid var(--line);margin-top:24px}
 .setup-handoff b{font-size:14px}.setup-handoff p{font-size:12px;margin:6px 0 0}.setup-handoff #handoff-feedback{flex-basis:100%;color:var(--soft)}.setup-handoff #handoff-feedback:empty{display:none}
 @media(max-width:800px){.service-config-fields{grid-template-columns:1fr;gap:16px}.service-config-note{margin:0}.service-config-fields input{font-size:16px}.setup-handoff>.inlineactions{width:100%;flex-wrap:wrap}.service-selection>.panelheading,.requirements-panel>.panelheading{align-items:flex-start;flex-wrap:wrap;gap:16px}}
