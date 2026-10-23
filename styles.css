@@ -762,18 +762,19 @@ textarea:focus, select:focus,
 .run-setup-summary{color:var(--soft);font-size:13px;line-height:1.4;overflow-wrap:anywhere}
 .run-readiness-row>.run-edit-setup{margin-left:auto;flex-shrink:0;font-size:12px;min-height:34px;padding:7px 12px;border-radius:6px;background:transparent}
 .run-idle{display:block}.run-idle h2{font-size:22px;margin:0 0 8px;color:var(--control-text)}.run-idle p{margin:0;font-size:14px}
-.run-controls{display:grid;grid-template-columns:180px minmax(0,1fr) auto;align-items:center;gap:32px;border-top:1px solid var(--line);margin-top:24px;padding-top:22px}
+
+.run-controls{display:flex;align-items:center;justify-content:space-between;gap:20px;border-top:1px solid var(--line);margin-top:24px;padding-top:20px}
 .run-controls[hidden]{display:none}
-.run-timeout-heading{display:flex;align-items:center;gap:6px;margin-bottom:8px;height:24px}
-.run-timeout-heading label{font-size:12px;font-weight:500;color:var(--soft);line-height:24px}
-.run-timeout-heading .context-help-button{width:24px;height:24px;min-height:24px}
-.run-timeout-input{display:flex;align-items:center;gap:10px}
-.run-timeout-input .number-field{width:108px;flex:0 0 108px}.run-timeout-input input{width:108px;height:40px;font-size:14px}
+.run-timeout-field{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.run-timeout-field>label{font-size:13px;color:var(--soft);line-height:20px}
+.run-timeout-input{display:flex;align-items:center;gap:8px}
+.run-timeout-input .number-field{width:94px;flex:0 0 94px}.run-timeout-input input{width:94px;height:38px;font-size:13px}
 .run-timeout-input>span{color:var(--soft);font-size:12px}
-.run-controls>.run-consent{margin:0;gap:10px;align-items:flex-start;font-size:13px;line-height:20px;color:var(--control-text)}
-.run-controls>.run-consent input{margin:2px 0 0;width:16px;height:16px;flex:0 0 16px;accent-color:var(--violet)}
-.run-controls>.run-consent small{display:block;color:var(--soft);font-size:12px;line-height:18px;margin-top:3px}
-.run-controls>.primary{min-height:40px;font-size:13px;padding:10px 16px;white-space:nowrap}
+.run-controls .context-help-button{width:26px;height:26px;min-height:26px;flex:0 0 26px}
+.run-launch-actions{display:flex;align-items:center;gap:8px;min-width:0}
+.run-launch-actions>.run-consent{display:flex;align-items:center;margin:0;gap:8px;font-size:12px;line-height:18px;color:var(--soft)}
+.run-launch-actions>.run-consent input{margin:0;width:16px;height:16px;flex:0 0 16px;accent-color:var(--violet)}
+.run-launch-actions>.primary{margin-left:12px;min-height:38px;font-size:13px;padding:9px 14px;white-space:nowrap}
 #evaluation-error:empty{display:none}
-@media(max-width:1100px){.run-controls{grid-template-columns:180px minmax(0,1fr);gap:20px}.run-controls>.primary{grid-column:2;justify-self:end}.run-controls>.run-consent{align-self:center}}
-@media(max-width:600px){.run-readiness-row{display:grid;grid-template-columns:1fr auto;gap:6px 12px}.run-readiness-row #evaluation-readiness{grid-column:1;grid-row:1}.run-setup-summary{grid-column:1;grid-row:2;padding-left:19px;font-size:12px}.run-readiness-row>.run-edit-setup{grid-column:2;grid-row:1/3;margin:0}.run-controls{grid-template-columns:1fr;gap:20px}.run-controls>.primary{grid-column:1;justify-self:stretch}.run-timeout-input input{font-size:16px}.run-timeout-heading{margin-bottom:6px}}
+@media(max-width:1050px){.run-controls{flex-wrap:wrap;gap:16px}.run-launch-actions{margin-left:auto}}
+@media(max-width:600px){.run-readiness-row{display:grid;grid-template-columns:1fr auto;gap:6px 12px}.run-readiness-row #evaluation-readiness{grid-column:1;grid-row:1}.run-setup-summary{grid-column:1;grid-row:2;padding-left:19px;font-size:12px}.run-readiness-row>.run-edit-setup{grid-column:2;grid-row:1/3;margin:0}.run-controls{align-items:stretch;flex-direction:column;gap:20px}.run-timeout-field{justify-content:flex-start}.run-timeout-input input{font-size:16px}.run-launch-actions{display:grid;grid-template-columns:1fr auto;margin:0;gap:12px 4px}.run-launch-actions>.primary{grid-column:1/-1;margin:0;width:100%}.run-launch-actions>.run-consent{font-size:12px}}
