@@ -968,3 +968,4 @@ textarea:focus, select:focus,
 .result-model-card>h3{overflow-wrap:anywhere}
 .result-model-card .technical-details{width:auto}
 .results-page .result-provider{margin:7px 0 22px}
+.artifact-list button{cursor:pointer;border-left:2px solid transparent}.artifact-list button:hover{background:#ffffff06;color:var(--control-text)}.artifact-list button.selected{border-left-color:var(--violet);background:#b99af015;color:var(--control-text)}.artifact-dialog button:disabled{opacity:.4;cursor:default}
