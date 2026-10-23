@@ -41,7 +41,7 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  page.get_by_text('Detailed comparison',exact=False).first.click()
  assert page.get_by_text('Tradeoffs',exact=True).is_visible()
  page.get_by_text('Evidence & methodology',exact=False).first.click()
- assert page.get_by_text('basis-judge-v1',exact=True).is_visible()
+ assert page.get_by_text('basis-judge-v2',exact=True).is_visible()
  with page.expect_download() as download:
   page.get_by_role('button',name='Export',exact=True).last.click()
  assert 'controlled pilot' in pathlib.Path(download.value.path()).read_text()

@@ -35,15 +35,15 @@ def fixture(tmp):
 
 
 def fake_request(provider,model,key,instructions,evidence,schema):
-    candidates=schema['properties']['candidates']['items']['properties']['candidate']['enum']
+    candidates=list(schema['properties']['candidates']['properties'])
     ref='task:0'
     finding={'text':'Independent checks passed for the sampled task.','evidence':[ref]}
     if 'headline' in schema['properties']:
         out={'headline':'Continue with a controlled pilot.','summary':'All models passed this sample; review effort is still unknown.',
-             'preferredCandidate':candidates[0],'outcome':'preference','candidates':[{'candidate':c,'assessment':'Passed sampled checks','evidence':[ref]} for c in candidates],
+             'preferredCandidate':candidates[0],'outcome':'preference','candidates':{c:{'assessment':'Passed sampled checks','evidence':[ref]} for c in candidates},
              'reasons':[finding],'tradeoffs':[finding],'nextSteps':['Review implementations.','Repeat on harder tasks.'],'limitations':['Small sample; reliability is not established.']}
     else:
-        out={'candidates':[{'candidate':c,'assessment':'Simple implementation; broader review needed.','strengths':[finding],'weaknesses':[]} for c in candidates], 'limitations':['Not independently calibrated.']}
+        out={'candidates':{c:{'assessment':'Simple implementation; broader review needed.','strengths':[finding],'weaknesses':[]} for c in candidates}, 'limitations':['Not independently calibrated.']}
     return {'id':'response-test','status':'completed','usage':{'input_tokens':1000,'input_tokens_details':{'cached_tokens':100},'output_tokens':200},'output':[{'type':'message','content':[{'type':'output_text','text':json.dumps(out)}]}]}
 
 
@@ -101,6 +101,32 @@ class RecommendationTests(unittest.TestCase):
             manager=Recommendations(runner,runner.judge_settings,fake_request)
             self.assertEqual(ledger(path.parent)['generations'][0]['status'],'interrupted')
             with self.assertRaises(ValueError):manager.status('../outside')
+
+    def test_required_candidate_keys_prevent_omissions_in_final_schema(self):
+        from recommendations import schemas, validate
+        quality, final = schemas(['C1','C2'],['task:0'])
+        for schema in (quality,final):
+            candidates=schema['properties']['candidates']
+            self.assertEqual(candidates['type'],'object')
+            self.assertEqual(candidates['required'],['C1','C2'])
+            self.assertFalse(candidates['additionalProperties'])
+        with tempfile.TemporaryDirectory() as tmp:
+            runner=fixture(tmp)
+            def missing(*args):
+                response=fake_request(*args)
+                if 'headline' in args[5]['properties']:
+                    result=json.loads(response['output'][0]['content'][0]['text'])
+                    result['candidates'].pop(next(iter(result['candidates'])))
+                    response['output'][0]['content'][0]['text']=json.dumps(result)
+                return response
+            manager=Recommendations(runner,runner.judge_settings,missing)
+            manager.start(RUN,[],True);manager.worker.join(5)
+            value=manager.status(RUN)
+            self.assertEqual(value['recommendation']['status'],'failed')
+            self.assertEqual(len(value['recommendation']['quality']['candidates']),5)
+            self.assertEqual(value['judgeRuns'][-1]['validation'],{'code':'candidate_coverage','expectedCount':5,'receivedCount':4})
+            self.assertEqual(value['usage']['outputTokens']['value'],400)
+            self.assertEqual(len(value['judgeRuns']),2) # No silent paid retry.
 
     def test_usage_exact_prices_unknown_and_cache(self):
         response={'usage':{'input_tokens':1000,'input_tokens_details':{'cached_tokens':100},'output_tokens':200}}
