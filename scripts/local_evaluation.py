@@ -12,6 +12,7 @@ import threading
 import time
 import uuid
 from integrated_swebench import LiteBenchmark, clean_env
+from usage_accounting import UsageTracker, summaries
 
 ACTIVE = ('preparing', 'running')
 EXCLUDED = {'.git', '.env', '.ssh', '.aws', 'node_modules', '__pycache__', '.venv', '.DS_Store'}
@@ -117,6 +118,7 @@ class EvaluationRunner:
     def update(self, **values):
         with self.lock:
             self.job.update(values)
+            self.job["usageSummary"] = summaries(self.job)
             write_json(self.file, self.job)
             directory = self.folder / 'evaluations' / self.job['id']
             if directory.is_dir():
@@ -126,7 +128,9 @@ class EvaluationRunner:
         rows = []
         for path in sorted((self.folder / 'evaluations').glob('*/result.json'), reverse=True):
             try:
-                rows.append(json.loads(path.read_text()))
+                job = json.loads(path.read_text())
+                job["usageSummary"] = summaries(job)
+                rows.append(job)
             except (OSError, ValueError):
                 continue
         return sorted(rows, key=lambda row: row.get('startedAt', 0), reverse=True)
@@ -346,6 +350,16 @@ class EvaluationRunner:
             return self.snapshot()
 
     def output(self, line):
+        if getattr(self, "_usage", None) and self.job.get("phase") == "agent":
+            try:
+                self._usage.consume(json.loads(line))
+                usage = self._usage.snapshot()
+                if usage['tokenStatus'] != 'unavailable' or usage['costStatus'] != 'unavailable':
+                    active = {'candidateId': self.job.get('currentCandidate'), 'agent': self.job.get('currentAgent'), 'taskIndex': self.job.get('currentTask'), 'usage': usage}
+                    if active != self.job.get('activeUsage'):
+                        self.update(activeUsage=active)
+            except (ValueError, TypeError, AttributeError):
+                pass
         # Render only public Claude messages and tool names, never thinking blocks
         # or the raw initialization payload (which can include environment data).
         if getattr(self, '_stream', '').split('-')[0] == 'claude' and self.job.get('phase') == 'agent' and line.lstrip().startswith('{'):
@@ -361,6 +375,16 @@ class EvaluationRunner:
                 else:
                     return
             except (ValueError, AttributeError, TypeError):
+                return
+        if getattr(self, '_usage', None) and self._usage.agent in ('codex', 'opencode') and self.job.get('phase') == 'agent' and line.lstrip().startswith('{'):
+            try:
+                event = json.loads(line)
+                if self._usage.agent == 'codex':
+                    item = event.get('item') or {}
+                    line = str(item.get('text', '')) if item.get('type') == 'agent_message' else 'Agent turn finished' if event.get('type') == 'turn.completed' else ''
+                else:
+                    line = str((event.get('part') or {}).get('text', '')) if event.get('type') == 'text' else ''
+            except (ValueError, TypeError, AttributeError):
                 return
         # Redact before truncation, storage, or exposure to the browser.
         line = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', line)
@@ -400,9 +424,11 @@ class EvaluationRunner:
                     dropping = False
                 elif not dropping:
                     buffer.append(byte)
-                    if len(buffer) > 32768:
+                    if len(buffer) > 1024 * 1024:
                         buffer.clear()
                         dropping = True
+                        if getattr(self, '_usage', None):
+                            self._usage.dropped = True
                         self.output('[Oversized output line omitted]')
         if buffer and not dropping:
             self.output(buffer.decode('utf-8', errors='replace'))
@@ -533,6 +559,7 @@ class EvaluationRunner:
                         prompt['instructions'] += ' Fix the repository issue without changing tests to manufacture success. Do not retrieve reference solutions or hidden evaluation tests.'
                     # Pass the prompt as an argument, never a file that an agent can replace before launch.
                     self._stream = candidate_id
+                    self._usage = UsageTracker(agent)
                     self.output(f"Starting task: {task['name']}")
                     self.update(status='running', phase='agent', currentAgent=agent, currentCandidate=candidate_id, currentTask=task['index'], message=f"Running {agent} · {model or 'default'}: {task['name']}")
                     started = time.time()
@@ -560,7 +587,10 @@ class EvaluationRunner:
                         result.update(status='error', error='Benchmark grading failed. See this attempt’s activity and grading logs.')
                     self.output(f"Attempt {result['status']}; checks: {result.get('checkPassed')}")
                     result['durationSeconds'] = round(time.time() - started, 2)
-                    self.update(results=[*self.job['results'], result])
+                    result['usage'] = self._usage.snapshot(finished=result.get('agentExitCode') == 0)
+                    result['usageCost'] = result['usage']['estimatedCostUsd']
+                    self._usage = None
+                    self.update(results=[*self.job['results'], result], activeUsage=None)
                     if self.cancel.is_set():
                         raise InterruptedError()
             failed = any(r['status'] != 'completed' for r in self.job['results'])

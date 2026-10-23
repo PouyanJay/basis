@@ -160,6 +160,41 @@ class EvaluationTests(unittest.TestCase):
         self.assertNotIn('target=/checks', ' '.join(agent[0]))
         self.assertIn('target=/checks,readonly',' '.join(verifier[0]));self.assertIn('--network=none',verifier[0])
         self.assertNotIn('OPENAI_API_KEY',verifier[1][1])
+    def test_failed_usage_survives_history_restart_and_ignores_grader_output(self):
+        self.plan['setup']['platforms'][0].update(id='claude',name='Claude Code')
+        self.start_paused()
+        def fail(*args):
+            self.runner.output(json.dumps({'type':'result','subtype':'error_max_turns','total_cost_usd':.003456,
+                'modelUsage':{'test-model':{'inputTokens':100,'outputTokens':10,'cacheReadInputTokens':20,'cacheCreationInputTokens':0}},
+                'private':'MUST_NOT_BE_SAVED'}))
+            self.runner.update(phase='check')
+            self.runner.output(json.dumps({'type':'result','total_cost_usd':99999}))
+            return 1
+        with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',side_effect=fail):
+            self.runner.execute([('claude','test-model','ANTHROPIC_API_KEY','test-secret')])
+        job=self.runner.snapshot()
+        self.assertEqual(job['results'][0]['status'],'error')
+        self.assertEqual(job['results'][0]['usageCost'],.003456)
+        self.assertEqual(job['usageSummary']['candidates']['estimatedCostUsd']['value'],.003456)
+        self.assertNotIn('MUST_NOT_BE_SAVED',self.runner.file.read_text())
+        restored=EvaluationRunner(self.base/'state',self.base,Vault,lambda:True,required_key,ALLOWED)
+        self.assertEqual(restored.history()[0]['usageSummary'],job['usageSummary'])
+
+    def test_timeout_preserves_observed_usage_without_inventing_cost(self):
+        self.plan['setup']['platforms'][0].update(id='claude',name='Claude Code')
+        self.start_paused()
+        def timeout(*args):
+            self.runner.output(json.dumps({'type':'assistant','message':{'id':'message1','usage':{'input_tokens':100,'output_tokens':1},'content':[]}}))
+            raise subprocess.TimeoutExpired('docker',30)
+        with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',side_effect=timeout):
+            self.runner.execute([('claude','test-model','ANTHROPIC_API_KEY','test-secret')])
+        row=self.runner.snapshot()['results'][0]
+        self.assertEqual(row['status'],'timeout')
+        self.assertEqual(row['usage']['inputTokens'],100)
+        self.assertEqual(row['usage']['tokenStatus'],'partial')
+        self.assertIsNone(row['usage']['outputTokens'])
+        self.assertIsNone(row['usageCost'])
+
     def test_partial_run_keeps_failed_attempt(self):
         self.start_paused()
         with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',side_effect=subprocess.TimeoutExpired('docker',30)):

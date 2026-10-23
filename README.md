@@ -251,3 +251,34 @@ Activity retains the latest 300 lines across the run (up to 2,000 characters eac
 In **Set up → Services & criteria**, save the provider key, then add one or more models from the authenticated catalog. Selected models appear below the selector and can be removed individually (up to ten per service). Each selected service–model combination attempts every team task and selected benchmark task separately, using the same starting files and independent checks.
 
 Each combination has its own workspace, console, attempt results, and human reviews. Results compare models in separate rows, including models from the same service. Requirements remain service-level assessments shared by that service's models. Existing single-model studies and saved results remain readable. More models mean more attempts and potential API charges.
+
+### Usage accounting
+
+New local attempts retain allowlisted CLI token telemetry in `result.usage` and
+export it with `usageSummary` (candidate total, each candidate/model, and a separate
+`judgeRuns` ledger). Failed attempts count too. Each aggregate includes recorded,
+complete, and total attempt counts; a subtotal with missing evidence is **partial**.
+Legacy runs are not backfilled. Manual review costs stay separate from telemetry.
+
+- Input means **uncached** input. Cache reads and writes are separate; output includes
+  reasoning where the runner reports it. Missing fields are null, never assumed zero.
+- Claude's final `modelUsage` accounts for the main agent and subagents. It replaces
+  intermediate measurements; repeated message IDs and final events are not added
+  twice. Without a final result, observed input/cache counts are partial and per-step
+  output placeholders are not reported as output totals.
+- Codex JSON turn telemetry reports input inclusive of cache. Cache counts are
+  subtracted for uncached input. Dollar cost is unavailable when the CLI does not
+  report it; Basis does not guess model pricing.
+- OpenCode JSON step telemetry is deduplicated by part ID; visible and reasoning
+  output tokens are combined. These are partial observed-step totals because child
+  sessions may not be included. Cursor currently has no captured usage telemetry.
+- Dollar values are **CLI estimates**, not invoice charges. Zero cost with nonzero
+  consumed tokens is treated as unavailable pricing. Values retain their precision
+  in storage, with four decimal places (or `< $0.0001`) in the UI.
+- Interrupted runs can omit billed usage. Observed measurements are saved during
+  execution, but neither partial counts nor client estimates establish the bill.
+  Judge accounting is separate; no judge calls are made by this feature.
+
+Accounting references: [Claude cost tracking](https://code.claude.com/docs/en/agent-sdk/cost-tracking),
+[Codex JSON mode](https://learn.chatgpt.com/docs/non-interactive-mode), and
+[OpenCode token normalization](https://github.com/anomalyco/opencode/blob/dev/packages/core/src/session/usage.ts).

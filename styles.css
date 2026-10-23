@@ -976,3 +976,5 @@ textarea:focus, select:focus,
 .artifact-preview .syntax-number,.artifact-preview .syntax-literal{color:#e4b783}
 .artifact-preview .syntax-function{color:#8ac8e8}
 .artifact-preview .syntax-comment{color:#939ba7;font-style:italic}
+.usage-overview{margin:0 0 30px;padding:16px 20px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:13px}.usage-overview>summary{cursor:pointer;display:flex;justify-content:space-between;gap:20px}.usage-overview small{color:var(--soft);margin-left:8px}.usage-breakdown{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;margin:24px 0 16px}.usage-breakdown>div{display:grid;gap:8px}.usage-breakdown span,.judge-usage{color:var(--soft);font-size:12px}.usage-breakdown b{font-weight:500}.judge-usage{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:14px}.technical-details dl{grid-template-columns:120px minmax(0,1fr)}
+@media(max-width:800px){.usage-breakdown{grid-template-columns:repeat(2,minmax(0,1fr))}.usage-overview>summary{flex-direction:column;gap:8px}.model-comparison table{min-width:850px}}

@@ -30,7 +30,10 @@ class TestRunner(bridge.Runner):
         return {'checkPassed':True, 'checkExitCode':0}
     def container(self, work, checks, args, timeout, key=None, value=None):
         time.sleep(.05)
-        if key: (work/'solution.py').write_text("print('hello')")
+        if key:
+            (work/'solution.py').write_text("print('hello')")
+            if args[1]=='claude':
+                self.output(json.dumps({'type':'result','subtype':'success','total_cost_usd':.001234,'modelUsage':{args[2]:{'inputTokens':100,'outputTokens':20,'cacheReadInputTokens':40,'cacheCreationInputTokens':10}}}))
         return 0
 
 temporary=tempfile.TemporaryDirectory()
@@ -222,6 +225,17 @@ try:
   page.wait_for_function('document.querySelector("#evaluation-progress").textContent.includes("6 of 6")')
   nav('Results');page.locator('.attempt-row').first.wait_for()
   assert len({r['folder'] for r in runner.snapshot()['results']})==6
+  usage=runner.snapshot()['usageSummary']
+  assert usage['candidates']['estimatedCostUsd']['value']==.004936
+  assert usage['candidates']['estimatedCostUsd']['recorded']==4
+  assert usage['candidates']['estimatedCostUsd']['total']==6
+  assert usage['judge']['attempts']==0
+  assert '$0.0049' in page.locator('.usage-overview summary').inner_text()
+  assert 'partial' in page.locator('.usage-overview summary').inner_text()
+  page.locator('.usage-overview summary').click()
+  assert '400' in page.locator('.usage-breakdown').inner_text()
+  assert 'No judge calls' in page.locator('.judge-usage').inner_text()
+
   assert page.get_by_role('cell',name='second-model Claude Code',exact=False).count()==2
   assert page.locator('.attempt-row').count()==6
   assert 'unverified' in page.locator('body').inner_text()
