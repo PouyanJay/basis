@@ -282,3 +282,29 @@ Legacy runs are not backfilled. Manual review costs stay separate from telemetry
 Accounting references: [Claude cost tracking](https://code.claude.com/docs/en/agent-sdk/cost-tracking),
 [Codex JSON mode](https://learn.chatgpt.com/docs/non-interactive-mode), and
 [OpenCode token normalization](https://github.com/anomalyco/opencode/blob/dev/packages/core/src/session/usage.ts).
+
+### Judge setup and requirement evidence
+
+Settings now configures only the judge (OpenAI or Anthropic). Judge keys use the
+separate `basis-judge` OS-credential namespace and are never stored in browser
+storage, study exports, or `judge-settings.json`. Test connection lists models
+with that credential; Save judge validates the selected ID against that catalog.
+This checks catalog access, not generation capability or judging quality. No
+model is hardcoded and no paid generation request is made by configuration.
+
+Set up → Services & criteria → Requirements groups runtime, provider/account,
+and organizational requirements. A verified or failed human review requires an
+HTTPS evidence link, notes, reviewer, and review timestamp. Previous review
+versions remain in the study's `gateEvidence` history. Existing unsupported pass
+flags remain Needs review. These are recorded human assessments, not automatic
+certifications of a provider or account. Saved evaluations keep their setup
+snapshot; editing the current setup does not rewrite historical runs.
+
+The authenticated local `evidence-package` endpoint takes an evaluation `id` and
+builds a bounded package from that saved run, independent check outcomes, usage,
+human reviews, and allowlisted artifacts. It excludes private grader inputs and
+keeps candidate identities outside the quality-assessment input. Artifact text
+remains explicitly untrusted; identity masking is not guaranteed if code reveals
+it. Evidence links are recorded, not fetched. The digest changes with included
+evidence, enabling future stale-recommendation detection. This stage does not
+send the package to a judge or generate recommendations.

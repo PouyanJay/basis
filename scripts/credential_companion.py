@@ -57,9 +57,13 @@ from local_evaluation import EvaluationRunner, benchmark_pack
 from humaneval_pack import prepare as prepare_humaneval
 from model_discovery import discover
 
+from judge_settings import JudgeSettings
+from evidence_package import build_package
+
 class Runner(EvaluationRunner):
     def __init__(self, folder=None):
         super().__init__(folder, ROOT, lambda: vault(), lambda: docker_ready(), required_key, ALLOWED)
+        self.judge_settings = JudgeSettings(self.folder, lambda: vault())
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -125,6 +129,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {'integratedBenchmarks': True, 'multiModel': True, 'configured': configured, 'credentialError': issue, 'dockerReady': docker_ready(), 'job': self.runner.snapshot()}); return
             if self.path == '/api/local/job':
                 self._json(200, {'job': self.runner.snapshot()}); return
+            if self.path.startswith('/api/local/judge-'):
+                if not hasattr(self.runner,'judge_settings'):
+                    self.runner.judge_settings = JudgeSettings(self.runner.folder, vault)
+                manager = self.runner.judge_settings
+                if self.path == '/api/local/judge-status':
+                    self._json(200, manager.status(item.get('provider'))); return
+                if self.path == '/api/local/judge-models':
+                    self._json(200, manager.models(item.get('provider'), item.get('key'))); return
+                if self.path == '/api/local/judge-save':
+                    self._json(200, manager.save(item.get('provider'), item.get('model'))); return
+            if self.path == '/api/local/evidence-package':
+                self._json(200, build_package(self.runner,item.get('id'))); return
             if self.path == '/api/local/models':
                 self._json(200, discover(item.get('service'), item.get('provider'), vault())); return
             if self.path == '/api/local/credentials':

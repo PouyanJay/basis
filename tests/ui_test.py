@@ -60,22 +60,23 @@ with sync_playwright() as p:
  page.get_by_role('option',name='Anthropic',exact=True).click()
  assert page.locator('[data-service-key="opencode"] input').get_attribute('data-local-key')=='ANTHROPIC_API_KEY'
  assert page.get_by_role('combobox',name='OpenCode model',exact=True).is_disabled()
- page.locator('select[data-gate="claude:retention"]').locator('..').get_by_role('combobox').click()
- page.get_by_role('option',name='Fail',exact=True).click()
- assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
+ page.get_by_role('tab',name='Requirements',exact=True).click()
+ page.locator('[data-requirement="retention"]').click()
+ page.get_by_role('combobox',name='Status',exact=True).click()
+ page.get_by_role('option',name='Failed',exact=True).click()
+ page.locator('[name="url"]').fill('https://example.com/evidence')
+ page.locator('[name="notes"]').fill('Documented requirement is not met')
+ page.locator('[name="reviewer"]').fill('Test reviewer')
+ page.get_by_role('button',name='Save review',exact=True).click()
+ assert 'Failed' in page.locator('[data-requirement="retention"]').inner_text()
+ page.get_by_role('tab',name='Services',exact=True).click()
  page.get_by_role('button',name='Remove Claude Code from evaluation',exact=True).click()
- assert page.locator('select[data-gate="claude:retention"]').count()==0
  page.get_by_role('button',name='Include Claude Code in evaluation',exact=True).click()
- assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
- page.get_by_role('button',name='Add custom service',exact=True).click()
- page.locator('.modal [name="name"]').fill('Team custom tool')
- page.locator('.modal [name="provider"]').fill('Internal')
- page.locator('.modal [name="mode"]').fill('CLI')
- page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
- assert page.get_by_role('combobox',name='Team custom tool: Data retention and training restrictions',exact=True).inner_text()=='Unverified'
- page.get_by_role('button',name='Remove Team custom tool from evaluation',exact=True).click()
- page.evaluate('render()')
- assert page.locator('select[data-gate="claude:retention"]').input_value()=='fail'
+ page.get_by_role('tab',name='Requirements',exact=True).click()
+ page.get_by_role('combobox',name='Requirement service',exact=True).click()
+ page.get_by_role('option',name='Claude Code',exact=True).click()
+ assert 'Failed' in page.locator('[data-requirement="retention"]').inner_text()
+ page.get_by_role('tab',name='Services',exact=True).click()
  navigate('Set up')
  page.get_by_role('button',name='Increase Engineers',exact=True).click()
  assert page.locator('[data-path="org.developers"]').input_value()=='1'

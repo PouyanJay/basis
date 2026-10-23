@@ -21,6 +21,7 @@ jobs:
           python -m playwright install --with-deps chromium
           python tests/ui_test.py
           python tests/local_ui_test.py
+          python tests/judge_ui_test.py
           python tests/setup_handoff_test.py
           python tests/benchmark_ui_test.py
       - name: Stage public static application only

@@ -61,7 +61,7 @@ try:
   assert page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Credentials',exact=True).count()==0
   assert page.get_by_role('combobox',name='Codex model',exact=True).is_disabled()
   assert page.get_by_role('combobox',name='Claude Code model',exact=True).is_disabled()
-  nav('Settings')
+  nav('Set up','Services & criteria')
   page.locator('[data-local-key="OPENAI_API_KEY"]').fill('test-only-key-never-real')
   page.locator('[data-save-local="OPENAI_API_KEY"]').click()
   page.wait_for_function('document.querySelector(\'[data-key-status="OPENAI_API_KEY"]\').textContent==="Configured"')
@@ -281,7 +281,7 @@ try:
   assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
   page.screenshot(path=str(out/'results-mobile.png'),full_page=True)
   page.set_viewport_size({'width':1440,'height':1000})
-  nav('Settings');page.reload();nav('Settings')
+  nav('Set up','Services & criteria');page.reload();nav('Set up','Services & criteria')
   page.wait_for_function('document.querySelector(\'[data-key-status="OPENAI_API_KEY"]\').textContent==="Configured"')
   out=ROOT/'test-results/local';out.mkdir(parents=True,exist_ok=True)
   page.screenshot(path=str(out/'settings-desktop.png'),full_page=True)
