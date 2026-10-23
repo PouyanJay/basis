@@ -122,7 +122,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     configured = {name: bool(store.get_password('basis-local', name)) for name in ALLOWED}
                 except Exception:
                     issue = 'OS credential store unavailable. Install requirements-local.txt and unlock your OS credential store.'
-                self._json(200, {'multiModel': True, 'configured': configured, 'credentialError': issue, 'dockerReady': docker_ready(), 'job': self.runner.snapshot()}); return
+                self._json(200, {'integratedBenchmarks': True, 'multiModel': True, 'configured': configured, 'credentialError': issue, 'dockerReady': docker_ready(), 'job': self.runner.snapshot()}); return
             if self.path == '/api/local/job':
                 self._json(200, {'job': self.runner.snapshot()}); return
             if self.path == '/api/local/models':
@@ -142,6 +142,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {'job': self.runner.stop()}); return
             if self.path == '/api/local/review':
                 self._json(200, {'job': self.runner.review(item.get('id'), item.get('key'), item.get('review'))}); return
+            if self.path == '/api/local/prepare-swebench':
+                self._json(202, {'benchmark': self.runner.lite.start(item.get('count', 5))}); return
+            if self.path == '/api/local/swebench-status':
+                self._json(200, {'benchmark': self.runner.lite.snapshot()}); return
+            if self.path == '/api/local/cancel-swebench':
+                self._json(200, {'benchmark': self.runner.lite.stop()}); return
             if self.path == '/api/local/prepare-humaneval':
                 path = prepare_humaneval(self.runner.folder, item.get('count', 5))
                 self._json(200, {'path': path, 'benchmark': benchmark_pack(path)}); return
@@ -173,6 +179,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        runner.lite.stop()
         runner.stop()
         server.server_close()
 

@@ -9,6 +9,7 @@ import subprocess
 import threading
 import time
 import uuid
+from integrated_swebench import LiteBenchmark, clean_env
 
 ACTIVE = ('preparing', 'running')
 EXCLUDED = {'.git', '.env', '.ssh', '.aws', 'node_modules', '__pycache__', '.venv', '.DS_Store'}
@@ -83,6 +84,7 @@ class EvaluationRunner:
         self.folder = Path(folder or Path.home() / '.local/share/basis')
         self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.root, self.vault, self.docker_ready, self.required_key, self.allowed = root, vault, docker_ready, required_key, allowed
+        self.lite = LiteBenchmark(self.folder, root)
         self.lock = threading.RLock()
         self.cancel = threading.Event()
         self.image = 'basis-local-runner:v2'
@@ -93,7 +95,7 @@ class EvaluationRunner:
             try:
                 self.job = json.loads(self.file.read_text())
                 if self.job['status'] in ACTIVE:
-                    if re.fullmatch(r'basis-[a-f0-9]{32}', self.job.get('container') or ''):
+                    if re.fullmatch(r'(?:basis-[a-f0-9]{32}|sweb\.eval\.[a-z0-9_.-]+\.basis-[a-f0-9]{32}-[a-z0-9-]+)', self.job.get('container') or ''):
                         self.remove_container(self.job['container'])
                     self.update(status='interrupted', finishedAt=time.time(), message='The local companion stopped. Completed evidence is preserved.', container=None)
             except (ValueError, KeyError):
@@ -204,7 +206,7 @@ class EvaluationRunner:
             timeout = plan.get('timeoutSeconds', 600)
             if type(timeout) is not int or not 30 <= timeout <= 1800:
                 raise ValueError('Time limit must be 30–1800 seconds per attempt.')
-            tasks = [{**t, 'sourceKind': 'team', 'suite': 'Team tasks'} for t in setup.get('tasks', [])]
+            tasks = [{**{k: v for k, v in t.items() if k not in ('grader', 'instancePath', 'imageTag', 'imageDigest')}, 'sourceKind': 'team', 'suite': 'Team tasks'} for t in setup.get('tasks', [])]
             packs = plan.get('benchmarkPaths', [])
             if not isinstance(packs, list) or len(packs) > 5:
                 raise ValueError('Choose at most five benchmark packs.')
@@ -214,9 +216,16 @@ class EvaluationRunner:
                 if any(p['name'] == pack['name'] for p in plan['benchmarks']):
                     raise ValueError('Use a unique name for each benchmark pack in this run.')
                 plan['benchmarks'].append({k: v for k, v in pack.items() if k != 'tasks'})
-                tasks.extend({**t, 'instanceId': t.get('id', str(n)), 'id': f'benchmark-{index}-{n}', 'sourceKind': 'benchmark', 'suite': pack['name'], 'revision': pack['revision']} for n, t in enumerate(pack['tasks']))
-            if not 1 <= len(tasks) <= 100:
-                raise ValueError('Define a task in Set up or add a benchmark pack (maximum 100 tasks).')
+                tasks.extend({**{k: v for k, v in t.items() if k not in ('grader', 'instancePath', 'imageTag', 'imageDigest')}, 'instanceId': t.get('id', str(n)), 'id': f'benchmark-{index}-{n}', 'sourceKind': 'benchmark', 'suite': pack['name'], 'revision': pack['revision']} for n, t in enumerate(pack['tasks']))
+            suites = plan.get('integratedBenchmarks', [])
+            if not isinstance(suites, list) or len(suites) > 1 or any(not isinstance(b, dict) or b.get('id') != 'swebench-lite' for b in suites):
+                raise ValueError('Only SWE-bench Lite is currently available for integrated execution.')
+            for suite in suites:
+                pack = self.lite.selection(suite.get('count'))
+                plan['benchmarks'].append({k: v for k, v in pack.items() if k != 'tasks'})
+                tasks.extend({**t, 'instanceId': t['id'], 'sourceKind': 'benchmark', 'suite': pack['name'], 'revision': pack['revision'], 'harness': pack['harness']} for t in pack['tasks'])
+            if not 1 <= len(tasks) <= 400:
+                raise ValueError('Define a task in Set up or add a benchmark pack (maximum 400 tasks).')
             if not self.docker_ready():
                 raise ValueError('Start Docker before running the evaluation.')
             run_id = uuid.uuid4().hex
@@ -241,6 +250,10 @@ class EvaluationRunner:
                     base = directory / 'inputs' / str(index)
                     task['sourceDigest'] = copy_source(task.get('sourcePath'), base / 'source')
                     task['checksDigest'] = copy_source(task.get('checksPath'), base / 'checks')
+                    if task.get('grader') == 'swebench-lite':
+                        shutil.copyfile(task['instancePath'], base / 'instance.json')
+                        task['checksDigest'] = hashlib.sha256((base / 'instance.json').read_bytes()).hexdigest()
+                        task.pop('instancePath')
                 plan.update(tasks=tasks, services=services, timeoutSeconds=timeout, schemaVersion=1)
                 write_json(directory / 'plan.json', plan)
             except Exception:
@@ -318,13 +331,13 @@ class EvaluationRunner:
         if buffer and not dropping:
             self.output(buffer.decode('utf-8', errors='replace'))
 
-    def command(self, args, timeout, env=None):
+    def command(self, args, timeout, env=None, cwd=None):
         if self.cancel.is_set():
             raise InterruptedError()
         with self.lock:
             if self.cancel.is_set():
                 raise InterruptedError()
-            self.process = subprocess.Popen(args, cwd=self.root, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            self.process = subprocess.Popen(args, cwd=cwd or self.root, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             reader = threading.Thread(target=self.read_output, args=(self.process.stdout,), daemon=True)
             reader.start()
         try:
@@ -365,10 +378,66 @@ class EvaluationRunner:
             self.remove_container(name)
             self.update(container=None)
 
+    def git(self, work, *args):
+        # The agent never receives the trusted git directory or user git config.
+        gitdir = work.parent / (work.name + '-patch-index')
+        env = {**{k:v for k,v in clean_env().items() if not k.startswith('GIT_')}, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': os.devnull,
+               'GIT_CONFIG_SYSTEM': os.devnull, 'GIT_ATTR_NOSYSTEM': '1'}
+        return subprocess.run(['git', '--no-pager', '--git-dir=' + str(gitdir), '--work-tree=' + str(work),
+                               '-c', 'core.hooksPath=' + os.devnull, '-c', 'core.attributesFile=' + os.devnull,
+                               '-c', 'core.autocrlf=false', *args], env=env, cwd=work,
+                              capture_output=True, check=True, timeout=60)
+
+    def prepare_patch(self, work):
+        self.git(work, 'init', '--template=')
+        self.git(work, 'add', '-A', '--', '.')
+        tree = self.git(work, 'write-tree').stdout.decode().strip()
+        (work.parent / (work.name + '-base-tree')).write_text(tree)
+
+    def grade_lite(self, task, work, timeout):
+        self.output('Grading with the pinned SWE-bench harness')
+        self.git(work, 'add', '-A', '--', '.')
+        tree = (work.parent / (work.name + '-base-tree')).read_text()
+        patch = self.git(work, 'diff', '--cached', '--binary', '--no-ext-diff', '--no-textconv', tree, '--', '.').stdout
+        evidence = work.parent / (work.name + '-grading')
+        evidence.mkdir()
+        (evidence / 'prediction.patch').write_bytes(patch)
+        if not patch.strip():
+            report = evidence / 'report.json'
+            write_json(report, {task['instanceId']: {'resolved': False, 'reason': 'No changes produced', 'graded': False}})
+            return {'checkPassed': False, 'checkExitCode': None, 'gradingReport': str(report), 'gradingReason': 'No changes produced', 'gradingSkipped': True}
+        instance = json.loads((Path(self.job['folder']) / 'inputs' / str(task['index']) / 'instance.json').read_text())
+        run_id = 'basis-' + self.job['id'] + '-' + str(task['index']) + '-' + work.name
+        name = 'sweb.eval.' + task['instanceId'].lower() + '.' + run_id
+        report = evidence / 'report.json'
+        config = {'instance': instance, 'imageTag': task['imageTag'], 'imageDigest': task['imageDigest'], 'patch': str(evidence / 'prediction.patch'),
+                  'runId': run_id, 'timeout': timeout, 'report': str(report)}
+        write_json(evidence / 'config.json', config)
+        self.update(container=name)
+        try:
+            code = self.command([str(self.lite.python), str(self.root / 'scripts/swebench_helper.py'), 'grade', str(evidence / 'config.json')],
+                                timeout + 120, clean_env(), cwd=evidence)
+            if code == 124:
+                raise subprocess.TimeoutExpired('Official SWE-bench checks', timeout)
+            if code or not report.exists():
+                raise RuntimeError('Official grading failed')
+            grade = json.loads(report.read_text()).get(task['instanceId'], {})
+            if type(grade.get('resolved')) is not bool:
+                raise RuntimeError('Official report is missing a resolved outcome')
+            return {'checkPassed': grade['resolved'], 'checkExitCode': code, 'gradingReport': str(report),
+                    'harness': 'swebench==' + task['harness'], 'datasetRevision': task['revision'], 'imageDigest': task['imageDigest']}
+        finally:
+            self.remove_container(name)
+            self.update(container=None)
+
     def execute(self, prepared):
         self._secrets = [row[3] for row in prepared]
         self._stream = 'setup'
         try:
+            for digest in {t['imageDigest'] for t in self.job['plan']['tasks'] if t.get('grader') == 'swebench-lite'}:
+                if self.command(['docker', 'image', 'inspect', '--format', '{{.Id}}', digest], 30, clean_env()):
+                    self.output('Benchmark image is missing. Remove and add SWE-bench Lite again before running.')
+                    raise RuntimeError('Prepared benchmark image is missing')
             if self.command(['docker', 'build', '--progress=plain', '-t', 'basis-local-runner:v2', '-f', 'scripts/local-runner.Dockerfile', '.'], 900):
                 raise RuntimeError('Could not build the runner. Check Docker and network connectivity.')
             plan = self.job['plan']
@@ -384,6 +453,8 @@ class EvaluationRunner:
                     checks = directory / 'inputs' / str(task['index']) / 'checks'
                     prompt = {'task': task['name'], 'acceptance': task['acceptance'], 'teamContext': plan['setup'].get('org', {}),
                               'requirements': plan['setup'].get('gates', []), 'instructions': 'Work in /work. Implement the task. Do not alter /checks. Policy requirements need human evidence and cannot be certified by this run.'}
+                    if task.get('grader') == 'swebench-lite':
+                        prompt['instructions'] += ' Fix the repository issue without changing tests to manufacture success. Do not retrieve reference solutions or hidden evaluation tests.'
                     # Pass the prompt as an argument, never a file that an agent can replace before launch.
                     self._stream = candidate_id
                     self.output(f"Starting task: {task['name']}")
@@ -393,9 +464,14 @@ class EvaluationRunner:
                               'sourceKind': task['sourceKind'], 'suite': task['suite'], 'folder': str(work), 'accepted': None,
                               'checkPassed': None, 'usageCost': None, 'humanMinutes': None}
                     try:
+                        if task.get('grader') == 'swebench-lite':
+                            self.prepare_patch(work)
                         code = self.container(work, checks, ['agent', agent, model, json.dumps(prompt)], plan['timeoutSeconds'], key, value)
                         result.update(status='completed' if code == 0 else 'error', agentExitCode=code)
-                        if code == 0 and task.get('checkCommand'):
+                        if code == 0 and task.get('grader') == 'swebench-lite':
+                            self.update(phase='check', message=f"Grading {agent} · {model}: {task['name']}")
+                            result.update(self.grade_lite(task, work, plan['timeoutSeconds']))
+                        elif code == 0 and task.get('checkCommand'):
                             self.output('Running independent checks')
                             self.update(phase='check', message=f"Checking {agent} · {model or 'default'}: {task['name']}")
                             check = self.container(work, checks, ['check', task['checkCommand']], plan['timeoutSeconds'])
@@ -404,6 +480,8 @@ class EvaluationRunner:
                         result['status'] = 'timeout'
                     except InterruptedError:
                         result['status'] = 'stopped'
+                    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError):
+                        result.update(status='error', error='Benchmark grading failed. See this attempt’s activity and grading logs.')
                     self.output(f"Attempt {result['status']}; checks: {result.get('checkPassed')}")
                     result['durationSeconds'] = round(time.time() - started, 2)
                     self.update(results=[*self.job['results'], result])

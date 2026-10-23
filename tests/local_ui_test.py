@@ -26,6 +26,8 @@ class TestVault:
     def set_password(self, service, name, value): self.values[name]=value
 class TestRunner(bridge.Runner):
     def command(self, *args, **kwargs): return 0
+    def grade_lite(self, task, work, timeout):
+        return {'checkPassed':True, 'checkExitCode':0}
     def container(self, work, checks, args, timeout, key=None, value=None):
         time.sleep(.05)
         if key: (work/'solution.py').write_text("print('hello')")
@@ -36,6 +38,10 @@ runner=TestRunner(pathlib.Path(temporary.name)/'runs')
 checks=pathlib.Path(temporary.name)/'checks';checks.mkdir();(checks/'check.py').write_text('assert True')
 pack=pathlib.Path(temporary.name)/'pack.json'
 pack.write_text(json.dumps({'schemaVersion':1,'name':'UI test benchmark','revision':'test-v1','tasks':[{'name':'External case','acceptance':'Return hello','checksPath':str(checks),'checkCommand':'python3 /checks/check.py'}]}))
+
+source=pathlib.Path(temporary.name)/'lite-source';source.mkdir();(source/'README.md').write_text('Fixture source')
+instance=pathlib.Path(temporary.name)/'instance.json';instance.write_text('{}')
+runner.lite.selection=lambda count:{'id':'swebench-lite','name':'SWE-bench Lite','revision':'a'*40,'harness':'3.0.15','tasks':[{'id':'test__repo-1','name':'Repository issue','acceptance':'Fix greeting','sourcePath':str(source),'grader':'swebench-lite','instancePath':str(instance),'imageTag':'fixture','imageDigest':'fixture'}]}
 
 server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(bridge.Handler,token='test-only-token',runner=runner))
 threading.Thread(target=server.serve_forever,daemon=True).start()
@@ -132,10 +138,10 @@ try:
   page.evaluate('window.scrollTo(0,0)')
   page.wait_for_timeout(250)
   page.screenshot(path=str(out/'benchmarks-desktop.png'),full_page=True)
-  help_button=page.get_by_role('button',name='About HumanEval',exact=True)
+  help_button=page.get_by_role('button',name='About SWE-bench Lite',exact=True)
   help_button.hover()
   tooltip=page.get_by_role('tooltip');tooltip.wait_for()
-  assert tooltip.locator('strong').inner_text()=='HumanEval'
+  assert tooltip.locator('strong').inner_text()=='SWE-bench Lite'
   assert tooltip.locator('li').count()==2
   tooltip.hover();page.wait_for_timeout(200);assert tooltip.is_visible()
   page.screenshot(path=str(out/'benchmark-help-desktop.png'))
@@ -146,43 +152,68 @@ try:
   page.wait_for_timeout(350)
   page.evaluate("window.scrollTo(0,document.querySelector('.benchmark-panel').getBoundingClientRect().top+scrollY-24)")
   page.screenshot(path=str(out/'benchmarks-mobile.png'))
-  page.get_by_role('button',name='About local benchmark packs',exact=True).click()
+  page.get_by_role('button',name='About SWE-bench Lite',exact=True).click()
   tooltip=page.get_by_role('tooltip');tooltip.wait_for()
   box=tooltip.bounding_box()
   assert box['x']>=0 and box['x']+box['width']<=390
   assert box['y']>=0 and box['y']+box['height']<=844
   page.screenshot(path=str(out/'benchmark-help-mobile.png'))
-  page.get_by_role('button',name='Choose pack',exact=True).click()
-  page.locator('#benchmark-pack-path').click()
+  page.locator('#swebench-count').click()
   assert page.get_by_role('tooltip').count()==0
   assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
   page.set_viewport_size({'width':1440,'height':1000})
-  page.locator('[data-benchmark-details="swebench-lite"]').click()
-  assert page.locator('#details-swebench-lite').is_visible()
-  assert page.locator('#details-swebench-lite').get_by_role('link',name='Setup guide',exact=False).get_attribute('href').startswith('https://github.com/')
-  page.locator('[data-benchmark-details="swebench-lite"]').click()
+  assert page.get_by_role('button',name='Unavailable',exact=True).count()==5
+  assert page.locator('[data-nav="benchmarks"]').count()==0
   page.get_by_role('tab',name='Benchmarks',exact=True).focus()
   page.keyboard.press('ArrowRight')
   assert page.locator('#evaluation-tabpanel-benchmarks').is_hidden()
   page.keyboard.press('ArrowLeft')
   assert page.locator('#evaluation-tabpanel-benchmarks').is_visible()
-  # A prepared dataset response; no network download or provider usage.
-  page.route('**/api/local/prepare-humaneval',lambda route:route.fulfill(json={'path':str(pathlib.Path(temporary.name)/'human-eval-test/pack.json'),'benchmark':{'name':'HumanEval (Basis adapter)','tasks':[{}]*5}}))
-  page.locator('#add-humaneval').click()
-  page.get_by_role('button',name='Remove HumanEval',exact=True).wait_for()
-  assert page.locator('#humaneval-count').is_disabled()
-  assert page.locator('#humaneval-count').input_value()=='5'
-  page.get_by_role('button',name='Remove HumanEval',exact=True).click()
-  assert page.locator('#add-humaneval').is_visible()
-  page.locator('#benchmark-pack-path').fill(str(pack))
-  page.locator('#add-benchmark-pack').click()
-  page.locator('[data-remove-pack]').wait_for()
-  assert page.locator('.selected-packs li').count()==1
-  page.locator('#clear-benchmarks').click()
-  assert page.locator('[data-remove-pack]').count()==0
-  page.locator('#benchmark-pack-path').fill(str(pack))
-  page.locator('#add-benchmark-pack').click()
-  page.locator('[data-remove-pack]').wait_for()
+  # Simulate asynchronous preparation, failure, retry, cancellation, and ready.
+  prep={'status':'idle'}
+  page.route('**/api/local/swebench-status',lambda route:route.fulfill(json={'benchmark':prep}))
+  def prepare(route):
+   prep.update(status='checking',count=1,message='Checking this computer',completed=0)
+   route.fulfill(json={'benchmark':prep})
+  page.route('**/api/local/prepare-swebench',prepare)
+  page.locator('#swebench-count').fill('1')
+  page.locator('#add-swebench').click()
+  page.locator('#cancel-swebench').wait_for()
+  assert page.locator('.benchmark-preparation .is-active').count()==1
+  page.screenshot(path=str(out/'benchmark-preparing.png'),full_page=True)
+  def cancel(route):
+   prep.update(status='cancelled',message='Preparation cancelled')
+   route.fulfill(json={'benchmark':prep})
+  page.route('**/api/local/cancel-swebench',cancel)
+  page.locator('#cancel-swebench').click()
+  page.locator('#add-swebench').wait_for()
+  page.locator('#swebench-count').fill('1')
+  page.locator('#add-swebench').click()
+  page.locator('#cancel-swebench').wait_for()
+  prep.update(status='error',message='Start Docker, then retry.')
+  page.get_by_role('button',name='Retry',exact=True).wait_for()
+  assert page.get_by_text('Start Docker, then retry.',exact=True).is_visible()
+  page.get_by_role('button',name='Retry',exact=True).click()
+  page.locator('#cancel-swebench').wait_for()
+  prep.update(status='ready',count=1,message='Ready',completed=1)
+  page.get_by_role('button',name='Remove SWE-bench Lite',exact=True).wait_for()
+  assert page.locator('#swebench-count').is_disabled()
+  page.reload()
+  nav('Run evaluation')
+  page.get_by_role('button',name='Remove SWE-bench Lite',exact=True).wait_for()
+  page.get_by_role('button',name='Remove SWE-bench Lite',exact=True).click()
+  assert page.locator('#add-swebench').is_visible()
+  page.locator('#swebench-count').fill('1')
+  page.locator('#add-swebench').click()
+  page.locator('#cancel-swebench').wait_for()
+  prep.update(status='ready',count=1,message='Ready',completed=1)
+  page.get_by_role('button',name='Remove SWE-bench Lite',exact=True).wait_for()
+  report={'type':'basis-community-benchmark-report','schemaVersion':1,'benchmarkId':'swebench-lite','datasetRevision':'a'*40,'harnessRevision':'b'*40,'agent':'Fixture agent','model':'fixture-model','executionMode':'CLI','runId':'test-import','provenance':'external-official-harness','verified':False,'humanAccepted':False,'tasks':[{'id':'repo__issue-1','status':'resolved','durationSeconds':1}]}
+  page.locator('#lite-report-file').set_input_files({'name':'report.json','mimeType':'application/json','buffer':json.dumps(report).encode()})
+  page.get_by_text('1 imported · unverified',exact=True).wait_for()
+  page.locator('.benchmark-imported summary').click()
+  assert page.get_by_text('Fixture agent · fixture-model',exact=True).is_visible()
+  assert page.get_by_role('tab',name='Benchmarks',exact=True).get_attribute('aria-selected')=='true'
   page.get_by_role('button',name='Continue to run',exact=True).click()
   assert page.locator('#evaluation-tabpanel-benchmarks').is_hidden()
   page.locator('#evaluation-consent').check()
@@ -191,7 +222,7 @@ try:
   page.wait_for_function('document.querySelector("#evaluation-progress").textContent.includes("6 of 6")')
   nav('Results');page.locator('.attempt-row').first.wait_for()
   assert len({r['folder'] for r in runner.snapshot()['results']})==6
-  assert page.get_by_role('cell',name='Claude Code second-model',exact=False).count()==1
+  assert page.get_by_role('cell',name='Claude Code second-model',exact=False).count()==2
   assert page.locator('.attempt-row').count()==6
   assert 'unverified' in page.locator('body').inner_text()
   page.locator('[data-include-suite]').uncheck()
@@ -246,9 +277,9 @@ try:
   touch.get_by_role('button',name='Toggle menu',exact=True).tap()
   touch.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Run evaluation',exact=True).tap()
   touch.get_by_role('tab',name='Benchmarks',exact=True).tap()
-  touch.get_by_role('button',name='About HumanEval',exact=True).tap()
+  touch.get_by_role('button',name='About SWE-bench Lite',exact=True).tap()
   assert touch.get_by_role('tooltip').is_visible()
-  touch.locator('#humaneval-count').tap()
+  touch.locator('#swebench-count').tap()
   assert touch.get_by_role('tooltip').count()==0
   assert not errors,errors
   browser.close()

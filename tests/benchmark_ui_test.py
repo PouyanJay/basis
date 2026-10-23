@@ -13,11 +13,11 @@ with sync_playwright() as p:
  page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Results',exact=True).click()
  # Exercise the standalone report view; hosted Results now guides users to the local app.
  page.evaluate("page='benchmarks';render()")
- assert page.get_by_role('heading',name='External benchmarks').count()==1
+ assert page.get_by_role('heading',name='Run evaluation',exact=True).count()==1
  assert page.get_by_text('SWE-bench Lite').count()>=1
  assert page.get_by_text('Terminal-Bench 2.1').count()>=1
- assert page.get_by_text('No benchmark results imported yet').count()==1
- assert page.get_by_text('No fabricated scores are shown').count()==1
+ assert page.get_by_role('button',name='Unavailable',exact=True).count()==5
+ assert page.get_by_role('button',name='Import existing report',exact=True).count()==1
  page.screenshot(path=str(BASE/'test-results'/'benchmark-desktop.png'),full_page=True)
  page.set_viewport_size({'width':390,'height':844})
  assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'horizontal overflow'

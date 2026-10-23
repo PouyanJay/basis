@@ -38,7 +38,7 @@ Basis brings those questions into one study. It connects an engineering profile,
 |---|---|
 | **Home** | A guided path through setup, execution, and results. |
 | **Set up** | Team context, service selection, requirements, and task definitions with acceptance criteria. |
-| **Run evaluation** | Execute setup tasks and optional HumanEval or local benchmark packs; monitor progress and stop runs. |
+| **Run evaluation** | Execute setup tasks and SWE-bench Lite; monitor preparation and runs, then compare models. |
 | **Results** | Compare saved run outcomes, inspect requirement assessments, record human review, and include/exclude benchmark evidence. |
 | **Tool catalog** | Documented vendor capabilities and their primary sources. |
 | **Settings** | Shared OS credential status and local evaluation data. |
@@ -63,7 +63,7 @@ Open **http://127.0.0.1:8765/**. On Windows, use `.venv\Scripts\python.exe` inst
 
 1. **Set up:** describe team context, define tasks with acceptance criteria, then select services, models, and evaluation criteria. A task can start empty or from a local source folder. Optionally supply an independent checks folder and command.
 2. **Services & criteria:** set the model and key in each selected service row. Keys saved in Settings already show **Configured**.
-3. **Run evaluation:** use the **Benchmarks** tab to select optional HumanEval tasks or local benchmark packs. The same tab lists SWE-bench Lite, Verified, Pro, and Terminal-Bench, with external setup and report-import links. Choose **Continue to run** to review readiness, set a time limit, authorize provider usage, and start. Switching tabs preserves your selection.
+3. **Run evaluation:** use the **Benchmarks** tab to add SWE-bench Lite. Its card checks prerequisites, downloads pinned tasks, caches Docker images, and reports preparation progress. Other benchmarks are visible but inactive. Existing Lite reports can be imported and reviewed within its card. Choose **Continue to run** to review readiness, set a time limit, authorize provider usage, and start. Switching tabs preserves your selection.
 4. Watch progress or stop the run. The first run builds the agent image and may take several minutes.
 5. **Results:** select a saved evaluation, inspect each attempt and its local files, record human acceptance/effort/cost, and compare services. Benchmark evidence can be included or excluded without deleting it.
 
@@ -123,31 +123,25 @@ Resetting browser setup does not remove these files or OS credentials. Export a 
 
 The companion binds to loopback, validates Host and Origin, requires a session token for API requests, and serves only allowlisted frontend assets. Statuses distinguish completed, partial (attempt errors/timeouts), stopped, interrupted, and failed runs. A failed automated check is an evaluation outcome, not an infrastructure failure. Missing checks are shown as **Not checked**, not as success.
 
-### External benchmarks
+### Integrated benchmarks
 
-**HumanEval** is available directly on Run evaluation. Basis downloads a SHA-256-verified dataset pinned to upstream revision `b9453e8f1865df0a0057a1383767caa400acfbcf`, selects a deterministic subset (seed 0, 1–50 tasks), and executes original held-out checks against each generated `solution.py`. The [upstream project](https://github.com/openai/human-eval) is historical and unmaintained. This adapter uses agent workflows rather than the original completion sampling harness: results are **not official leaderboard scores**.
+**SWE-bench Lite** is the active benchmark. On **Run evaluation → Benchmarks**, choose 1–300 tasks (default 5), then **Add benchmark**. The card reports checking, downloading, preparation, errors with retry, and readiness. Cancel stops preparation; retry reuses downloaded tools and images. Removing a benchmark excludes it from the next run without deleting its cache. Preparation does not call model providers.
 
-You can also add a local benchmark pack by absolute path. Paths within the pack are relative to the manifest. Each benchmark task must have independent checks:
+Basis pins the dataset to `6ec7bb89b9342f664a54a6e0a6ea6501d3437cc2`, the official `swebench` package to `3.0.15`, and each downloaded image by digest. Tasks are sorted by instance ID and shuffled with seed 0, so every service/model receives the same selected tasks. A dedicated Python environment installs automatically. Docker needs at least 8 GB RAM and 20 GB free host disk for initial preparation; larger selections require more disk, including space in Docker's own disk image. Official x86 images run through Docker's emulation on Apple Silicon.
 
-```json
-{
-  "schemaVersion": 1,
-  "name": "Team Python benchmark",
-  "revision": "2026-10-22",
-  "source": "https://example.com/benchmark-source",
-  "tasks": [{
-    "name": "Implement input validation",
-    "acceptance": "Reject invalid input and preserve valid input.",
-    "sourcePath": "cases/validation/source",
-    "checksPath": "cases/validation/checks",
-    "checkCommand": "python3 /checks/test_validation.py"
-  }]
-}
+Agents edit a source snapshot in Basis's standard isolated coding environment (2 CPUs, 2 GB RAM). The independent official SWE-bench harness grades their patches in the pinned task environment (2 CPUs, 4 GB RAM, no network or provider credentials). Agents do not receive gold patches or hidden checks. Repository-specific dependencies are available to the grader; the Basis agent environment is not the official repository environment. These local runs are **not official leaderboard submissions**.
+
+The selected tasks, dataset/harness versions, image digests, source digests, generated patches, grading logs, and reports are retained locally. Results compare models separately for each suite; errors and ungraded attempts remain visible. Paid provider execution starts only after the normal Run consent. No API spending cap is enforced.
+
+HumanEval, local packs, SWE-bench Verified, Pro, and Terminal-Bench are currently inactive in the UI. Their retained utilities and historical results are not deleted. Existing Lite reports use the Basis v1 report format and remain explicitly unverified; importing does not enqueue any tasks. See [SWEBENCH_SETUP.md](SWEBENCH_SETUP.md) for retained command-line tooling.
+
+To verify real official grading without paid model calls, prepare one Lite task, then run:
+
+```sh
+.venv/bin/python tests/swebench_integration_test.py
 ```
 
-Checks run with `/work` as their working directory; `/checks` contains the immutable checks. Python checks can load `/work/solution.py` using `runpy.run_path`. No paid call is needed to validate the pack format. Up to five packs and 100 combined tasks are allowed. Manifest revisions, SHA-256 digests, exact tasks, and input digests are saved with the run.
-
-**Results → Imported benchmark reports** retains support for authentic external reports. SWE-bench and Terminal-Bench still require their own official harnesses; Basis does not mislabel local packs as those official evaluations. See [SWEBENCH_SETUP.md](SWEBENCH_SETUP.md) for retained command-line tooling.
+This opt-in test uses a known correct patch and an unchanged solution, with reports saved separately from user history. Routine tests use fixtures and do not download benchmark images.
 
 ## How it works
 
