@@ -246,7 +246,7 @@ There are no static model lists or fallback aliases. Saved models absent from th
 
 ### Live run activity
 
-Run evaluation shows preparation, task execution, checks, elapsed time, and completed attempt counts. Benchmarks and execution limits share a two-column layout on desktop. Active status lights pulse gently and respect reduced-motion preferences.
+Run evaluation shows preparation, task execution, checks, elapsed time, and completed attempt counts. A compact footer inside the run card holds the time limit, provider consent, and Run button. Execution details are available from its help icon. Active status lights pulse gently and respect reduced-motion preferences.
 
 Expand Runner setup or an individual service to inspect its output, follow new lines, copy, or download the retained log. Claude Code uses its [documented streaming output](https://code.claude.com/docs/en/headless); Basis displays public text and tool names, not thinking blocks or initialization payloads. Quiet periods mean the process has not emitted output, not that progress has been estimated.
 

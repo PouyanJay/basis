@@ -749,7 +749,7 @@ textarea:focus, select:focus,
 @media(max-width:600px){.run-heading{flex-wrap:wrap}.run-heading>div{flex:1}.run-heading>.pill{margin-left:23px}.run-phases li{flex-direction:column;align-items:flex-start;font-size:11px;gap:8px}.run-queue-row{grid-template-columns:1fr auto;gap:8px}.run-queue-row>span:first-child{grid-column:1/-1}.run-footer{align-items:flex-start;flex-direction:column}.run-meter .panelheading{gap:10px;flex-wrap:wrap}.run-configuration{gap:18px}}
 @media(prefers-reduced-motion:reduce){.status-led.is-active{animation:none}}
 .run-configuration .benchmark-count-actions{justify-content:flex-start}.run-configuration .benchmark-count-actions label{margin-right:0}.run-configuration .benchmark-count-actions .number-field{width:120px}
-.run-progress:has(.run-idle){display:none}.run-queue{max-height:340px;overflow:auto}
+.run-queue{max-height:340px;overflow:auto}
 .run-phases li:not(:last-child)::after{content:'';height:1px;background:var(--line);flex:1;margin:0 16px}
 @media(max-width:600px){.run-phases li:not(:last-child)::after{display:none}}
 
@@ -759,3 +759,13 @@ textarea:focus, select:focus,
 .run-setup-summary{color:var(--soft);overflow-wrap:anywhere}
 .run-readiness-row>button{margin-left:auto;flex-shrink:0}
 @media(max-width:600px){.run-readiness-row{flex-wrap:wrap;gap:12px}.run-readiness-row #evaluation-readiness{flex-basis:100%}.run-setup-summary{flex:1}}
+
+/* Run controls belong to the evaluation surface; polling updates only progress. */
+.run-idle{display:block}.run-idle h2{font-size:22px;margin:0 0 8px;color:var(--control-text)}.run-idle p{margin:0;font-size:14px}
+.run-controls{border-top:1px solid var(--line);margin-top:24px;padding-top:20px}.run-controls[hidden]{display:none}
+.run-control-top{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.run-timeout{display:flex;align-items:center;gap:10px;font-size:14px;flex-wrap:wrap}.run-timeout>.muted{font-size:12px}
+.run-timeout-input{display:flex;align-items:center;gap:8px}.run-timeout-input .number-field{width:110px}.run-timeout-input input{width:110px;height:38px}.run-timeout-input>.muted{font-size:12px}
+.run-launch{display:flex;align-items:center;justify-content:space-between;gap:28px}.run-launch .run-consent{margin:0;max-width:620px;font-size:13px;line-height:1.6}.run-launch>.primary{flex-shrink:0}
+#evaluation-error:empty{display:none}
+@media(max-width:700px){.run-launch{align-items:flex-start;flex-direction:column;gap:18px}.run-timeout{column-gap:8px}.run-timeout-input{flex-basis:100%;margin-top:6px}.run-control-top{align-items:flex-start}.run-control-top>.context-help-button{margin-left:auto}}
