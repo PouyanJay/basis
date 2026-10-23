@@ -840,3 +840,13 @@ textarea:focus, select:focus,
 .console-tasks>div>span:first-child{min-width:0;overflow-wrap:anywhere}.console-tasks .run-state{flex-shrink:0;font-size:11px}
 @media(max-width:600px){.run-consoles summary{flex-wrap:wrap}.run-consoles .console-model-name{font-size:13px}.console-tasks>div{align-items:flex-start;gap:12px}}
 @media(prefers-reduced-motion:reduce){.run-consoles summary::before{transition:none}}
+
+/* Completed stages stay green; only the stage doing work animates. */
+.run-phases li>span{position:relative;flex-shrink:0}
+.run-phases li.done{color:#81bba3}.run-phases li.done>span{background:#81bba30c;border-color:#81bba3;color:#81bba3}
+.run-phases li.done:not(:last-child)::after{background:#81bba34d}
+.run-phases li.current>span{border-color:#b99af040;background:#b99af008}
+.run-phases li.current>span::after{content:'';position:absolute;inset:-1px;border:2px solid transparent;border-top-color:var(--violet);border-radius:50%;animation:phase-spin 1.8s linear infinite}
+.run-phases li.warning>span{color:#c9a16e;border-color:#c9a16e}
+@keyframes phase-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.run-phases li.current>span::after{animation:none;border-color:var(--violet)}}

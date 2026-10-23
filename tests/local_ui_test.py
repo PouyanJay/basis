@@ -245,7 +245,8 @@ try:
   out=ROOT/'test-results/local';out.mkdir(parents=True,exist_ok=True)
   page.screenshot(path=str(out/'settings-desktop.png'),full_page=True)
   nav('Run evaluation');page.get_by_role('tab',name='Run evaluation',exact=True).click();page.locator('#evaluation-progress').wait_for()
-  assert page.locator('.run-phases .current').inner_text().endswith('Finish')
+  assert page.locator('.run-phases .done').count()==4
+  assert page.locator('.run-phases .current').count()==0
   console=page.locator('[data-console]').filter(has_text='Claude Code').first
   console.locator('summary').click()
   page.wait_for_timeout(2800)
@@ -264,6 +265,10 @@ try:
    assert page.locator('#evaluation-progress .run-heading').inner_text().find(message)>=0 or status=='failed'
    if status in ('preparing','running'):
     assert page.locator('#evaluation-progress .status-led.is-active').count()>0
+    assert page.locator('.run-phases [aria-current=step]').count()==1
+   else:
+    assert page.locator('.run-phases .current').count()==0
+    assert page.locator('.run-phases .warning').count()>0
    page.screenshot(path=str(out/f'progress-{phase}-{status}.png'),full_page=True)
   runner.update(**finished)
   page.wait_for_timeout(2800)
