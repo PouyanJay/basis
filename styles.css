@@ -969,3 +969,10 @@ textarea:focus, select:focus,
 .result-model-card .technical-details{width:auto}
 .results-page .result-provider{margin:7px 0 22px}
 .artifact-list button{cursor:pointer;border-left:2px solid transparent}.artifact-list button:hover{background:#ffffff06;color:var(--control-text)}.artifact-list button.selected{border-left-color:var(--violet);background:#b99af015;color:var(--control-text)}.artifact-dialog button:disabled{opacity:.4;cursor:default}
+/* Muted editor colors maintain contrast on the artifact viewer's dark surface. */
+.artifact-preview code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#d7dae0;tab-size:4}
+.artifact-preview .syntax-keyword,.artifact-preview .syntax-key{color:#c6a5ef}
+.artifact-preview .syntax-string{color:#a5c798}
+.artifact-preview .syntax-number,.artifact-preview .syntax-literal{color:#e4b783}
+.artifact-preview .syntax-function{color:#8ac8e8}
+.artifact-preview .syntax-comment{color:#939ba7;font-style:italic}
