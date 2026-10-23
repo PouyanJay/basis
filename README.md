@@ -251,3 +251,9 @@ Run evaluation shows preparation, task execution, checks, elapsed time, and comp
 Expand Runner setup or an individual service to inspect its output, follow new lines, copy, or download the retained log. Claude Code uses its [documented streaming output](https://code.claude.com/docs/en/headless); Basis displays public text and tool names, not thinking blocks or initialization payloads. Quiet periods mean the process has not emitted output, not that progress has been estimated.
 
 Activity retains the latest 300 lines across the run (up to 2,000 characters each); oversized lines are omitted. Active provider keys and common credential patterns are redacted before storage. Redaction cannot identify every possible sensitive value in arbitrary task output; review logs before sharing. Older runs have no captured console output. Restart the local companion after updating to enable activity capture for new runs.
+
+### Compare models within a service
+
+In **Set up → Services & criteria**, save the provider key, then add one or more models from the authenticated catalog. Selected models appear below the selector and can be removed individually (up to ten per service). Each selected service–model combination attempts every team task and selected benchmark task separately, using the same starting files and independent checks.
+
+Each combination has its own workspace, console, attempt results, and human reviews. Results compare models in separate rows, including models from the same service. Requirements remain service-level assessments shared by that service's models. Existing single-model studies and saved results remain readable. More models mean more attempts and potential API charges.

@@ -56,6 +56,40 @@ class EvaluationTests(unittest.TestCase):
         self.assertIn('Tool: Read',output)
         self.assertIn('Public update',output)
 
+    def test_multiple_models_are_isolated_and_reviewed_independently(self):
+        self.plan['setup']['platforms'][0]['models']=['model-a','model-b']
+        job=self.start_paused()
+        self.assertEqual(job['total'],2)
+        candidates=job['plan']['services']
+        self.assertEqual(len({p['candidateId'] for p in candidates}),2)
+        def container(work, checks, args, timeout, *credentials):
+            (work/'solution.txt').write_text(args[2])
+            return 0 if args[2]=='model-a' else 1
+        with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',side_effect=container):
+            self.runner.execute([('codex',m,'OPENAI_API_KEY','test-secret') for m in ['model-a','model-b']])
+        job=self.runner.snapshot()
+        first,second=job['results']
+        self.assertNotEqual(first['folder'],second['folder'])
+        self.assertEqual(pathlib.Path(first['folder'],'solution.txt').read_text(),'model-a')
+        self.assertEqual(pathlib.Path(second['folder'],'solution.txt').read_text(),'model-b')
+        self.assertEqual(first['status'],'completed')
+        self.assertEqual(second['status'],'error')
+        self.assertEqual({e['stream'] for e in job['activity']},{p['candidateId'] for p in candidates})
+        key=f"0:{first['candidateId']}"
+        self.runner.review(job['id'],key,{'accepted':True,'notes':'Reviewed model A'})
+        self.assertNotIn(f"0:{second['candidateId']}",self.runner.snapshot()['reviews'])
+        with self.assertRaises(ValueError):
+            self.runner.review(job['id'],'0:codex',{'accepted':True,'notes':'Ambiguous'})
+        restored=EvaluationRunner(self.base/'state',self.base,Vault,lambda:True,required_key,ALLOWED)
+        self.assertEqual(len(restored.snapshot()['plan']['services']),2)
+        self.assertTrue(restored.snapshot()['reviews'][key]['accepted'])
+
+    def test_invalid_model_selections_are_rejected(self):
+        for models in [[],['model-a','model-a'],['model-a',1],[''],['../bad model'],[str(n) for n in range(11)],'model-a']:
+            self.plan['setup']['platforms'][0]['models']=models
+            with self.subTest(models=models),self.assertRaises(ValueError):
+                self.start_paused()
+
     def test_snapshot_history_and_reviews(self):
         job=self.start_paused()
         self.plan['setup']['tasks'][0]['name']='Changed later'

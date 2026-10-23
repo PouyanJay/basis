@@ -19,7 +19,7 @@ def provider_response(url,headers):
     key=headers.get('Authorization',headers.get('x-api-key',''))
     if 'rejected-key' in key:raise RuntimeError('The provider rejected this key.')
     if 'empty-key' in key:return {'data':[]}
-    return {'data':[{'id':catalog_id,'display_name':'Provider model'}]}
+    return {'data':[{'id':catalog_id,'display_name':'Provider model'},{'id':'second-model','display_name':'Second model'},{'id':'third-model','display_name':'Third model'}]}
 class TestVault:
     values={}
     def get_password(self, service, name): return self.values.get(name)
@@ -76,7 +76,9 @@ try:
   page.get_by_role('combobox',name='Codex model',exact=True).click()
   assert page.get_by_role('option',name='Provider model · returned-model-v1',exact=True).count()==0
   page.get_by_role('option',name='Provider model · returned-model-v2',exact=True).click()
+  page.get_by_role('button',name='Remove returned-model-v1 from Codex',exact=True).click()
   catalog_id='returned-model-v1'
+  page.get_by_role('button',name='Remove returned-model-v2 from Codex',exact=True).click()
   page.get_by_role('button',name='Refresh Codex models',exact=True).click()
   page.get_by_role('combobox',name='Codex model',exact=True).click()
   page.get_by_role('option',name='Provider model · returned-model-v1',exact=True).click()
@@ -91,6 +93,17 @@ try:
   page.wait_for_function('document.querySelector(\'[data-key-status="ANTHROPIC_API_KEY"]\').textContent==="Configured"')
   page.get_by_role('combobox',name='Claude Code model',exact=True).click()
   page.get_by_role('option',name='Provider model · returned-model-v1',exact=True).click()
+  page.get_by_role('combobox',name='Claude Code model',exact=True).click()
+  page.get_by_role('option',name='Second model · second-model',exact=True).click()
+  assert page.locator('[data-model-control=claude] .selected-model').count()==2
+  page.get_by_role('button',name='Remove second-model from Claude Code',exact=True).click()
+  assert page.locator('[data-model-control=claude] .selected-model').count()==1
+  page.get_by_role('combobox',name='Claude Code model',exact=True).click()
+  page.get_by_role('option',name='Second model · second-model',exact=True).click()
+  page.get_by_role('combobox',name='Claude Code model',exact=True).click()
+  page.get_by_role('option',name='Third model · third-model',exact=True).click()
+  assert page.get_by_role('combobox',name='Claude Code model',exact=True).is_disabled()
+  page.get_by_role('button',name='Remove third-model from Claude Code',exact=True).click()
   page.get_by_role('button',name='Refresh Claude Code models',exact=True).click()
   page.get_by_role('combobox',name='Claude Code model',exact=True).click()
   out=ROOT/'test-results/local';out.mkdir(parents=True,exist_ok=True)
@@ -175,14 +188,16 @@ try:
   page.locator('#evaluation-consent').check()
   page.wait_for_function('!document.querySelector("#start-evaluation").disabled')
   page.locator('#start-evaluation').click()
-  page.wait_for_function('document.querySelector("#evaluation-progress").textContent.includes("4 of 4")')
+  page.wait_for_function('document.querySelector("#evaluation-progress").textContent.includes("6 of 6")')
   nav('Results');page.locator('.attempt-row').first.wait_for()
-  assert page.locator('.attempt-row').count()==4
+  assert len({r['folder'] for r in runner.snapshot()['results']})==6
+  assert page.get_by_role('cell',name='Claude Code second-model',exact=False).count()==1
+  assert page.locator('.attempt-row').count()==6
   assert 'unverified' in page.locator('body').inner_text()
   page.locator('[data-include-suite]').uncheck()
-  assert page.locator('.attempt-row').count()==2
+  assert page.locator('.attempt-row').count()==3
   page.locator('[data-include-suite]').check()
-  assert page.locator('.attempt-row').count()==4
+  assert page.locator('.attempt-row').count()==6
   page.locator('[data-review-attempt]').first.click()
   page.locator('.modal [name="notes"]').fill('Checked generated source and acceptance')
   page.locator('.modal').get_by_role('button',name='Save',exact=True).click()

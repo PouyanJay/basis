@@ -122,7 +122,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     configured = {name: bool(store.get_password('basis-local', name)) for name in ALLOWED}
                 except Exception:
                     issue = 'OS credential store unavailable. Install requirements-local.txt and unlock your OS credential store.'
-                self._json(200, {'configured': configured, 'credentialError': issue, 'dockerReady': docker_ready(), 'job': self.runner.snapshot()}); return
+                self._json(200, {'multiModel': True, 'configured': configured, 'credentialError': issue, 'dockerReady': docker_ready(), 'job': self.runner.snapshot()}); return
             if self.path == '/api/local/job':
                 self._json(200, {'job': self.runner.snapshot()}); return
             if self.path == '/api/local/models':

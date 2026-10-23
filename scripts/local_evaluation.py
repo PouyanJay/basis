@@ -152,7 +152,7 @@ class EvaluationRunner:
         with self.lock:
             path = self.folder / 'evaluations' / run_id / 'result.json'
             job = json.loads(path.read_text())
-            if not any(f"{r['taskIndex']}:{r['agent']}" == key for r in job['results']):
+            if not any(f"{r['taskIndex']}:{r.get('candidateId', r['agent'])}" == key for r in job['results']):
                 raise ValueError('The attempt does not exist.')
             job.setdefault('reviews', {})[key] = {k: review.get(k) for k in ('accepted', 'notes', 'humanMinutes', 'usageCost')}
             job['reviews'][key]['reviewedAt'] = time.time()
@@ -180,18 +180,27 @@ class EvaluationRunner:
             if not 1 <= len(services) <= 4 or len({p.get('id') for p in services}) != len(services):
                 raise ValueError('Choose one to four distinct supported services in Set up.')
             prepared = []
+            candidates = []
             for service in services:
-                agent, model = service.get('id'), service.get('model', '')
-                if model == 'Specify deployed model':
-                    model = ''
-                if not isinstance(model, str) or len(model) > 100 or model and not re.fullmatch(r'[\w./:-]+', model, re.ASCII):
-                    raise ValueError('Set a valid model identifier in Set up.')
-                key = self.required_key(agent, model)
-                value = self.vault().get_password('basis-local', key)
-                if not value:
-                    raise ValueError(f'Configure {key} in Settings or Set up → Services & criteria.')
-                service['model'] = model or 'CLI default (not pinned)'
-                prepared.append((agent, model, key, value))
+                agent = service['id']
+                models = service.get('models', [service.get('model', '')])
+                if not isinstance(models, list) or not 1 <= len(models) <= 10 or not all(isinstance(m, str) for m in models) or len(set(models)) != len(models):
+                    raise ValueError('Choose one to ten distinct models per service.')
+                if 'models' in service and any(not m or m.startswith('Specify ') for m in models):
+                    raise ValueError('Choose an available model for each selected service.')
+                for model in models:
+                    if model == 'Specify deployed model':
+                        model = ''
+                    if len(model) > 100 or model and not re.fullmatch(r'[\w./:-]+', model, re.ASCII):
+                        raise ValueError('Set a valid model identifier in Set up.')
+                    key = self.required_key(agent, model)
+                    value = self.vault().get_password('basis-local', key)
+                    if not value:
+                        raise ValueError(f'Configure {key} in Settings or Set up → Services & criteria.')
+                    candidate_id = agent if len(models) == 1 else agent + '-' + hashlib.sha256(model.encode()).hexdigest()[:16]
+                    candidates.append({**service, 'model': model or 'CLI default (not pinned)', 'candidateId': candidate_id})
+                    prepared.append((agent, model, key, value))
+            services = candidates
             timeout = plan.get('timeoutSeconds', 600)
             if type(timeout) is not int or not 30 <= timeout <= 1800:
                 raise ValueError('Time limit must be 30–1800 seconds per attempt.')
@@ -250,7 +259,7 @@ class EvaluationRunner:
     def output(self, line):
         # Render only public Claude messages and tool names, never thinking blocks
         # or the raw initialization payload (which can include environment data).
-        if getattr(self, '_stream', '') == 'claude' and self.job.get('phase') == 'agent' and line.lstrip().startswith('{'):
+        if getattr(self, '_stream', '').split('-')[0] == 'claude' and self.job.get('phase') == 'agent' and line.lstrip().startswith('{'):
             try:
                 event = json.loads(line)
                 if event.get('type') == 'assistant':
@@ -368,17 +377,19 @@ class EvaluationRunner:
                 for agent, model, key, value in prepared:
                     if self.cancel.is_set():
                         raise InterruptedError()
-                    work = directory / 'attempts' / str(task['index']) / agent
+                    candidate = next((p for p in plan['services'] if p['id'] == agent and p['model'] == (model or 'CLI default (not pinned)')), {})
+                    candidate_id = candidate.get('candidateId', agent)
+                    work = directory / 'attempts' / str(task['index']) / candidate_id
                     shutil.copytree(directory / 'inputs' / str(task['index']) / 'source', work)
                     checks = directory / 'inputs' / str(task['index']) / 'checks'
                     prompt = {'task': task['name'], 'acceptance': task['acceptance'], 'teamContext': plan['setup'].get('org', {}),
                               'requirements': plan['setup'].get('gates', []), 'instructions': 'Work in /work. Implement the task. Do not alter /checks. Policy requirements need human evidence and cannot be certified by this run.'}
                     # Pass the prompt as an argument, never a file that an agent can replace before launch.
-                    self._stream = agent
+                    self._stream = candidate_id
                     self.output(f"Starting task: {task['name']}")
-                    self.update(status='running', phase='agent', currentAgent=agent, currentTask=task['index'], message=f"Running {agent}: {task['name']}")
+                    self.update(status='running', phase='agent', currentAgent=agent, currentCandidate=candidate_id, currentTask=task['index'], message=f"Running {agent} · {model or 'default'}: {task['name']}")
                     started = time.time()
-                    result = {'agent': agent, 'model': model or 'CLI default (not pinned)', 'taskIndex': task['index'], 'task': task['name'],
+                    result = {'agent': agent, 'candidateId': candidate_id, 'model': model or 'CLI default (not pinned)', 'taskIndex': task['index'], 'task': task['name'],
                               'sourceKind': task['sourceKind'], 'suite': task['suite'], 'folder': str(work), 'accepted': None,
                               'checkPassed': None, 'usageCost': None, 'humanMinutes': None}
                     try:
@@ -386,7 +397,7 @@ class EvaluationRunner:
                         result.update(status='completed' if code == 0 else 'error', agentExitCode=code)
                         if code == 0 and task.get('checkCommand'):
                             self.output('Running independent checks')
-                            self.update(phase='check', message=f"Checking {agent}: {task['name']}")
+                            self.update(phase='check', message=f"Checking {agent} · {model or 'default'}: {task['name']}")
                             check = self.container(work, checks, ['check', task['checkCommand']], plan['timeoutSeconds'])
                             result.update(checkPassed=check == 0, checkExitCode=check)
                     except subprocess.TimeoutExpired:

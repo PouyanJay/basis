@@ -60,7 +60,7 @@ with sync_playwright() as p:
  local.wait_for_function('document.querySelectorAll("[data-key-status].pass").length === 2')
  local.get_by_role('combobox',name='Codex model',exact=True).click()
  local.get_by_role('option',name='Returned model · test-returned-model',exact=True).click()
- assert local.locator('[data-service-model="codex"]').input_value()=='test-returned-model'
+ assert local.locator('[data-model-control="codex"] .selected-model').inner_text().strip()=='test-returned-model'
  assert keys=={'OPENAI_API_KEY':'test-only-handoff-openai','ANTHROPIC_API_KEY':'test-only-handoff-anthropic'}
  assert 'test-only-handoff' not in local.evaluate('JSON.stringify(localStorage)')
  assert 'test-only-handoff' not in page.evaluate('JSON.stringify(localStorage)')
