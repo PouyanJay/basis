@@ -646,7 +646,7 @@ textarea:focus, select:focus,
 .service-config-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:24px;align-items:start}
 .service-config-fields label{display:block;font-size:12px;color:var(--soft);margin:0}
 .service-config-fields input{margin-top:8px;width:100%;min-width:0}
-.key-field-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:18px}
+.key-field-heading{display:flex;justify-content:flex-start;align-items:center;gap:10px;min-height:18px}
 .key-field-heading .pill{font-size:10px;padding:2px 7px;line-height:1.4}
 .service-key-field .credential-entry{align-items:flex-end}
 .service-key-field .credential-entry input{margin-top:8px}
@@ -814,8 +814,7 @@ textarea:focus, select:focus,
 .benchmark-workspace .benchmark-workspace-footer{border:0;padding-top:0}
 @media(max-width:600px){.benchmark-group{padding:0 16px;margin-bottom:16px}.benchmark-group>.external-heading{padding:18px 0 14px}.benchmark-group .benchmark-catalog-row{column-gap:10px}.benchmark-group .external-benchmark{grid-template-columns:22px minmax(0,1fr) auto}.benchmark-group .benchmark-icon svg{width:20px;height:20px}}
 
-.selected-models{display:flex;flex-direction:column;gap:8px;margin-top:10px;min-width:0}
-.selected-model{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:6px;padding:7px 8px 7px 12px;background:var(--bg);min-width:0}
-.selected-model>span{font-size:12px;color:var(--control-text);overflow-wrap:anywhere;min-width:0}.selected-model>.iconbtn{width:28px;height:28px;flex:0 0 28px;color:var(--soft)}
-.model-selection-hint{font-size:11px;color:var(--soft);margin:8px 0 0;line-height:1.5}
-@media(max-width:600px){.selected-model>.iconbtn{width:32px;height:32px;flex-basis:32px}}
+.selected-models{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;margin-top:10px;min-width:0}.selected-models:empty{display:none}
+.selected-model{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:6px;padding:3px 4px 3px 10px;background:var(--bg);min-width:0;max-width:100%}
+.selected-model>span{font-size:12px;color:var(--control-text);overflow-wrap:anywhere;min-width:0}.selected-model>.iconbtn{width:24px;height:24px;min-height:24px;flex:0 0 24px;padding:4px;color:var(--soft)}
+@media(max-width:600px){.selected-model>.iconbtn{width:28px;height:28px;flex-basis:28px}}
