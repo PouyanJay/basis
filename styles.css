@@ -827,3 +827,16 @@ textarea:focus, select:focus,
 .benchmark-inactive>.secondary{color:var(--soft);background:transparent;cursor:not-allowed}
 @media(max-width:800px){.benchmark-inactive>.secondary{grid-column:2;justify-self:start}.lite-benchmark .benchmark-row-controls{flex-wrap:wrap}.benchmark-preparation,.benchmark-import{grid-column:1/-1}.lite-benchmark .benchmark-row-controls>label{max-width:100px}}
 .benchmark-imported{grid-column:2/-1;font-size:12px;color:var(--soft);min-width:0}.benchmark-imported summary{cursor:pointer}.benchmark-imported>div{display:grid;gap:6px;padding:14px 0;border-top:1px solid var(--line);margin-top:12px}.benchmark-imported b{color:var(--control-text);font-weight:500}.benchmark-imported small{overflow-wrap:anywhere}
+
+/* Model cards own their task progress and activity. */
+.run-consoles summary{display:flex;align-items:center;gap:12px;list-style:none}
+.run-consoles summary::-webkit-details-marker{display:none}
+.run-consoles summary::before{content:'›';color:var(--soft);font-size:18px;transition:transform .15s}
+.run-consoles details[open]>summary::before{transform:rotate(90deg)}
+.run-consoles .console-model-name{flex:1;min-width:0;overflow-wrap:anywhere;color:var(--control-text);font-size:14px;margin:0}
+.run-consoles summary>.run-state{margin:0;font-size:12px;flex-shrink:0}
+.console-tasks{margin-top:16px;padding:0 0 12px;border-bottom:1px solid var(--line);max-height:220px;overflow:auto}
+.console-tasks>div{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:7px 0;font-size:13px;color:var(--soft)}
+.console-tasks>div>span:first-child{min-width:0;overflow-wrap:anywhere}.console-tasks .run-state{flex-shrink:0;font-size:11px}
+@media(max-width:600px){.run-consoles summary{flex-wrap:wrap}.run-consoles .console-model-name{font-size:13px}.console-tasks>div{align-items:flex-start;gap:12px}}
+@media(prefers-reduced-motion:reduce){.run-consoles summary::before{transition:none}}
