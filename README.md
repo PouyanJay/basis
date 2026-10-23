@@ -63,7 +63,7 @@ Open **http://127.0.0.1:8765/**. On Windows, use `.venv\Scripts\python.exe` inst
 
 1. **Set up:** describe team context, define tasks with acceptance criteria, then select services, models, and evaluation criteria. A task can start empty or from a local source folder. Optionally supply an independent checks folder and command.
 2. **Services & criteria:** set the model and key in each selected service row. Keys saved in Settings already show **Configured**.
-3. **Run evaluation:** optionally add HumanEval tasks or local benchmark packs, set a time limit, review readiness, authorize provider usage, and press **Run evaluation**.
+3. **Run evaluation:** use the **Benchmarks** tab to select optional HumanEval tasks or local benchmark packs. The same tab lists SWE-bench Lite, Verified, Pro, and Terminal-Bench, with external setup and report-import links. Choose **Continue to run** to review readiness, set a time limit, authorize provider usage, and start. Switching tabs preserves your selection.
 4. Watch progress or stop the run. The first run builds the agent image and may take several minutes.
 5. **Results:** select a saved evaluation, inspect each attempt and its local files, record human acceptance/effort/cost, and compare services. Benchmark evidence can be included or excluded without deleting it.
 
