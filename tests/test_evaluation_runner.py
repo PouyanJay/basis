@@ -195,12 +195,19 @@ class EvaluationTests(unittest.TestCase):
         self.assertIsNone(row['usage']['outputTokens'])
         self.assertIsNone(row['usageCost'])
 
-    def test_partial_run_keeps_failed_attempt(self):
+    def test_timeout_is_completed_run_with_preserved_outcome(self):
         self.start_paused()
         with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',side_effect=subprocess.TimeoutExpired('docker',30)):
             self.runner.execute([('codex','','OPENAI_API_KEY','test-secret')])
-        self.assertEqual(self.runner.snapshot()['status'],'partial')
+        self.assertEqual(self.runner.snapshot()['status'],'completed')
         self.assertEqual(self.runner.snapshot()['results'][0]['status'],'timeout')
+    def test_execution_error_still_marks_run_partial(self):
+        self.start_paused()
+        with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',return_value=1):
+            self.runner.execute([('codex','','OPENAI_API_KEY','test-secret')])
+        self.assertEqual(self.runner.snapshot()['status'],'partial')
+        self.assertEqual(self.runner.snapshot()['results'][0]['status'],'error')
+
     def test_cancel_preserves_evidence_and_skips_remaining(self):
         self.plan['setup']['tasks'].append({'id':'T2','name':'Second','acceptance':'Works'})
         self.start_paused()

@@ -53,7 +53,8 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  page.locator('#rec-evidence').screenshot(path=str(out/'evidence-usage.png'),animations='disabled')
  page.get_by_role('tab',name='Sources',exact=True).click()
  assert page.get_by_text('15 included',exact=True).is_visible()
- assert page.locator('.rec-judge-name').count()==1
+ assert page.locator('.rec-judge-name').count()==0
+ assert not page.locator('.results-run-meta').is_visible()
  assert page.get_by_text('Judge settings',exact=True).count()==0
  with page.expect_download() as download:
   page.get_by_role('button',name='Export',exact=True).last.click()

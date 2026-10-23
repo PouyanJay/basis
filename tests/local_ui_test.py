@@ -183,6 +183,13 @@ try:
   page.locator('#add-swebench').click()
   page.locator('#cancel-swebench').wait_for()
   assert page.locator('.benchmark-preparation .is-active').count()==1
+  meter=page.get_by_role('progressbar',name='Benchmark preparation')
+  assert meter.get_attribute('aria-valuenow') is None
+  prep.update(status='preparing',count=10,completed=1,message='Preparing task 2 of 10')
+  page.wait_for_function("document.querySelector('.benchmark-progress')?.getAttribute('aria-valuenow') === '1'")
+  assert meter.get_attribute('aria-valuemax')=='10'
+  assert page.locator('.benchmark-progress-fill').evaluate('(el)=>el.style.width')=='10%'
+  assert page.locator('.benchmark-progress-activity').evaluate('(el)=>getComputedStyle(el).animationName')=='benchmark-sweep'
   page.screenshot(path=str(out/'benchmark-preparing.png'),full_page=True)
   def cancel(route):
    prep.update(status='cancelled',message='Preparation cancelled')
@@ -299,6 +306,16 @@ try:
   assert downloaded.value.suggested_filename=='basis-activity.txt'
   page.screenshot(path=str(out/'run-desktop.png'),full_page=True)
   finished=runner.snapshot()
+  # Completed execution remains green even when models fail checks or time out.
+  outcomes=[{**r,'status':'completed','checkPassed':False} for r in finished['results']]
+  outcomes[0]={**outcomes[0],'status':'timeout','checkPassed':None}
+  page.locator('h1').click()
+  runner.update(status='partial',results=outcomes,total=len(outcomes))
+  page.wait_for_timeout(2800)
+  assert page.locator('.run-heading h2').inner_text()=='Evaluation complete'
+  assert page.locator('.run-phases .done').count()==4
+  assert 'timed out' in page.locator('.run-meter').inner_text()
+  runner.update(**finished)
   for status,phase,message in [('preparing','prepare','Downloading agent tools'),('running','agent','Running Claude Code'),('running','check','Checking Claude Code'),('failed','check','Runner failed')]:
    runner.update(status=status,phase=phase,message=message,finishedAt=None if status in ('preparing','running') else time.time(),currentAgent='claude',currentTask=0,results=[])
    page.locator('h1').click()
@@ -307,6 +324,13 @@ try:
    if status in ('preparing','running'):
     assert page.locator('#evaluation-progress .status-led.is-active').count()>0
     assert page.locator('.run-phases [aria-current=step]').count()==1
+    if phase=='agent':
+     timing="document.querySelector('#evaluation-progress').getAnimations({subtree:true}).filter(a=>a.effect.target.closest('.run-heading,.run-phases') && ['phase-spin','run-led'].includes(a.animationName)).map(a=>({name:a.animationName,start:a.startTime}))"
+     before=page.evaluate(timing)
+     assert any(a['name']=='phase-spin' for a in before)
+     page.wait_for_timeout(2800)
+     after=page.evaluate(timing)
+     assert before==after, f'Polling restarted animations: {before} -> {after}'
    else:
     assert page.locator('.run-phases .current').count()==0
     assert page.locator('.run-phases .warning').count()>0

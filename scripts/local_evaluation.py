@@ -14,6 +14,15 @@ import uuid
 from integrated_swebench import LiteBenchmark, clean_env
 from usage_accounting import UsageTracker, summaries
 
+def normalize_completion(job):
+    """Legacy partial runs with only scored outcomes/time limits finished normally."""
+    if job and job.get('status') == 'partial' and job.get('total', 0) > 0:
+        rows = job.get('results', [])
+        if len(rows) == job['total'] and all(r.get('status') in ('completed', 'timeout') for r in rows):
+            job = {**job, 'status': 'completed'}
+    return job
+
+
 ACTIVE = ('preparing', 'running')
 EXCLUDED = {'.git', '.env', '.ssh', '.aws', 'node_modules', '__pycache__', '.venv', '.DS_Store'}
 
@@ -113,7 +122,7 @@ class EvaluationRunner:
 
     def snapshot(self):
         with self.lock:
-            return json.loads(json.dumps(self.job))
+            return normalize_completion(json.loads(json.dumps(self.job)))
 
     def update(self, **values):
         with self.lock:
@@ -134,7 +143,7 @@ class EvaluationRunner:
                 job['judgeRuns'] = judge['calls'] if (path.parent/'recommendations.json').exists() else job.get('judgeRuns',[])
                 job['recommendationHistory'] = judge['generations']
                 job["usageSummary"] = summaries(job)
-                rows.append(job)
+                rows.append(normalize_completion(job))
             except (OSError, ValueError):
                 continue
         return sorted(rows, key=lambda row: row.get('startedAt', 0), reverse=True)
@@ -597,7 +606,7 @@ class EvaluationRunner:
                     self.update(results=[*self.job['results'], result], activeUsage=None)
                     if self.cancel.is_set():
                         raise InterruptedError()
-            failed = any(r['status'] != 'completed' for r in self.job['results'])
+            failed = any(r['status'] not in ('completed', 'timeout') for r in self.job['results'])
             self.update(status='partial' if failed else 'completed', finishedAt=time.time(), message='Evaluation finished. Review checks and acceptance criteria; policy requirements still need documentary evidence.')
         except InterruptedError:
             self.update(status='stopped', finishedAt=time.time(), message='Stopped. Completed attempts are preserved.')
