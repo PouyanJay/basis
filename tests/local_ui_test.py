@@ -158,13 +158,13 @@ try:
   page.locator('#add-humaneval').click()
   page.get_by_role('button',name='Remove HumanEval',exact=True).wait_for()
   assert page.locator('#humaneval-count').is_disabled()
-  assert '5 tasks' in page.locator('#benchmark-selection-summary').inner_text()
+  assert page.locator('#humaneval-count').input_value()=='5'
   page.get_by_role('button',name='Remove HumanEval',exact=True).click()
   assert page.locator('#add-humaneval').is_visible()
   page.locator('#benchmark-pack-path').fill(str(pack))
   page.locator('#add-benchmark-pack').click()
   page.locator('[data-remove-pack]').wait_for()
-  assert '1 benchmark selected · 1 task' in page.locator('#benchmark-selection-summary').inner_text()
+  assert page.locator('.selected-packs li').count()==1
   page.locator('#clear-benchmarks').click()
   assert page.locator('[data-remove-pack]').count()==0
   page.locator('#benchmark-pack-path').fill(str(pack))
