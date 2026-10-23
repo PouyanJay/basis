@@ -222,11 +222,13 @@ try:
   page.wait_for_function('document.querySelector("#evaluation-progress").textContent.includes("6 of 6")')
   nav('Results');page.locator('.attempt-row').first.wait_for()
   assert len({r['folder'] for r in runner.snapshot()['results']})==6
-  assert page.get_by_role('cell',name='Claude Code second-model',exact=False).count()==2
+  assert page.get_by_role('cell',name='second-model Claude Code',exact=False).count()==2
   assert page.locator('.attempt-row').count()==6
   assert 'unverified' in page.locator('body').inner_text()
+  page.locator('.results-benchmark-filter summary').click()
   page.locator('[data-include-suite]').uncheck()
   assert page.locator('.attempt-row').count()==3
+  page.locator('.results-benchmark-filter summary').click()
   page.locator('[data-include-suite]').check()
   assert page.locator('.attempt-row').count()==6
   page.locator('[data-review-attempt]').first.click()
@@ -234,6 +236,31 @@ try:
   page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
   page.get_by_text('Human rejected',exact=False).first.wait_for()
   assert runner.snapshot()['plan']['setup']['tasks'][0]['name']=='Team greeting'
+  page.get_by_role('tab',name='JSON',exact=True).click()
+  assert page.locator('.json-lines').is_visible()
+  with page.expect_download() as downloaded:
+    page.locator('#download-setup-json').click()
+  assert downloaded.value.suggested_filename=='setup.json'
+  page.get_by_role('tab',name='Requirements',exact=False).click()
+  assert page.locator('#setup-panel-requirements').is_visible()
+  page.get_by_role('tab',name='Overview',exact=True).click()
+  page.locator('[data-artifacts]').first.click()
+  page.locator('[data-file="workspace/solution.py"]').click()
+  page.wait_for_function('document.querySelector(".artifact-preview").textContent.includes("hello")')
+  with page.expect_download() as downloaded:
+    page.locator('[data-artifact-download]').click()
+  assert downloaded.value.suggested_filename=='solution.py'
+  page.get_by_role('button',name='Close',exact=True).click()
+  page.locator('[data-review-attempt]').first.click()
+  assert page.locator('.modal [name="notes"]').input_value()=='Checked generated source and acceptance'
+  page.route('**/api/local/review',lambda route: route.fulfill(status=400,content_type='application/json',body='{"error":"Review save unavailable"}'))
+  page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
+  page.locator('.modal [role="alert"]').wait_for()
+  assert page.locator('.modal [name="notes"]').input_value()=='Checked generated source and acceptance'
+  page.unroute('**/api/local/review')
+  page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
+  page.locator('.modal').wait_for(state='detached')
+
   out=ROOT/'test-results/local';out.mkdir(parents=True,exist_ok=True)
   page.screenshot(path=str(out/'results-desktop.png'),full_page=True)
   page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(200)

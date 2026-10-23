@@ -25,6 +25,36 @@ class EvaluationTests(unittest.TestCase):
     def start_paused(self, plan=None):
         with patch('local_evaluation.threading.Thread'):
             return self.runner.start(plan or self.plan, True)
+    def test_artifact_access_is_scoped_to_saved_outputs(self):
+        import base64
+        run_id = 'a' * 32
+        directory = self.runner.folder / 'evaluations' / run_id
+        work = directory / 'attempts' / '0' / 'claude-test'
+        work.mkdir(parents=True)
+        (directory / 'result.json').write_text(json.dumps({'results':[{'taskIndex':0,'agent':'claude','candidateId':'claude-test'}]}))
+        (directory / 'plan.json').write_text('{}')
+        (work / 'solution.py').write_text('print("hello")')
+        (work / '.env').write_text('PRIVATE')
+        (work / 'escape').symlink_to(self.base)
+        (work / 'linked.py').symlink_to(work / 'solution.py')
+        grading = work.parent / 'claude-test-grading'
+        grading.mkdir()
+        (grading / 'config.json').write_text('PRIVATE GOLD')
+        (grading / 'report.json').write_text('{}')
+        key = '0:claude-test'
+        names = [f['name'] for f in self.runner.artifacts(run_id,key)['files']]
+        self.assertEqual(names, ['workspace/solution.py','grading/report.json'])
+        artifact = self.runner.artifact(run_id,'workspace/solution.py',key)
+        self.assertEqual(base64.b64decode(artifact['base64']).decode(), artifact['text'])
+        for name in ('../result.json','workspace/.env','grading/config.json','workspace/linked.py'):
+            with self.assertRaises(ValueError): self.runner.artifact(run_id,name,key)
+        with self.assertRaises(ValueError): self.runner.artifacts('../outside')
+        with self.assertRaises(ValueError): self.runner.artifacts(run_id,'0:other')
+        (work / 'large.txt').write_bytes(b'x' * (5*1024*1024+1))
+        with self.assertRaises(ValueError): self.runner.artifact(run_id,'workspace/large.txt',key)
+        (work / 'binary.bin').write_bytes(b'\x00\xff')
+        self.assertIsNone(self.runner.artifact(run_id,'workspace/binary.bin',key)['text'])
+
     def test_output_stream_redacts_split_secret_and_bounds_history(self):
         self.start_paused()
         self.runner._secrets = ['secret-example-123']

@@ -1,5 +1,7 @@
 """Durable local evaluation plans and isolated per-task execution."""
 import hashlib
+import base64
+import stat
 import json
 import os
 from pathlib import Path
@@ -141,6 +143,80 @@ class EvaluationRunner:
         if container:
             self.remove_container(container)
         return self.snapshot()
+
+    def artifact_files(self, run_id, key=None):
+        """Expose saved outputs only, never arbitrary paths or private grading inputs."""
+        if not isinstance(run_id, str) or not re.fullmatch(r'[a-f0-9]{32}', run_id):
+            raise ValueError('Invalid evaluation ID.')
+        directory = self.folder / 'evaluations' / run_id
+        if directory.is_symlink() or not directory.is_dir():
+            raise ValueError('Evaluation not found.')
+        if (directory / 'result.json').is_symlink():
+            raise ValueError('Symbolic links cannot be opened.')
+        job = json.loads((directory / 'result.json').read_text())
+        attempts = job.get('results', [])
+        if key is not None:
+            attempts = [r for r in attempts if f"{r['taskIndex']}:{r.get('candidateId', r['agent'])}" == key]
+            if not attempts:
+                raise ValueError('Attempt not found.')
+        files = {}
+        if key is None:
+            for name in ('plan.json', 'result.json'):
+                path = directory / name
+                if path.is_file() and not path.is_symlink():
+                    files[name] = path
+        for result in attempts:
+            candidate = result.get('candidateId', result['agent'])
+            index = result['taskIndex']
+            if type(index) is not int or not re.fullmatch(r'[a-z0-9-]+', candidate):
+                continue
+            work = directory / 'attempts' / str(index) / candidate
+            prefix = '' if key is not None else f'attempts/{index}/{candidate}/'
+            if work.is_dir() and not work.is_symlink() and work.resolve().is_relative_to(directory.resolve()):
+                for base, dirs, names in os.walk(work, followlinks=False):
+                    dirs[:] = sorted(d for d in dirs if d not in EXCLUDED and not d.startswith('.env') and not Path(base, d).is_symlink())
+                    for name in sorted(names):
+                        path = Path(base, name)
+                        if name in EXCLUDED or name.startswith('.env') or path.suffix in {'.pem', '.key', '.p12'}:
+                            continue
+                        if path.is_symlink() or not path.is_file():
+                            continue
+                        files[prefix + 'workspace/' + path.relative_to(work).as_posix()] = path
+                        if len(files) >= 1000:
+                            return files, True
+            # The grader's config contains held-out reference material; never include it.
+            grading = work.parent / (work.name + '-grading')
+            for name in ('prediction.patch', 'report.json'):
+                path = grading / name
+                if path.is_file() and not path.is_symlink() and not grading.is_symlink() and path.resolve().is_relative_to(directory.resolve()):
+                    files[prefix + 'grading/' + name] = path
+        return files, False
+
+    def artifacts(self, run_id, key=None):
+        files, truncated = self.artifact_files(run_id, key)
+        return {'files': [{'name': name, 'size': path.stat().st_size} for name, path in files.items()], 'truncated': truncated}
+
+    def artifact(self, run_id, name, key=None):
+        files, _ = self.artifact_files(run_id, key)
+        if not isinstance(name, str) or name not in files:
+            raise ValueError('File is not an available evaluation artifact.')
+        path = files[name]
+        directory = self.folder / 'evaluations' / run_id
+        if not path.resolve().is_relative_to(directory.resolve()) or any((directory / Path(*path.relative_to(directory).parts[:i])).is_symlink() for i in range(1, len(path.relative_to(directory).parts) + 1)):
+            raise ValueError('Symbolic links cannot be opened.')
+        with open(os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0)), 'rb') as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise ValueError('Only regular files can be opened.')
+            data = stream.read(5 * 1024 * 1024 + 1)
+        if len(data) > 5 * 1024 * 1024:
+            raise ValueError('This file exceeds the 5 MB preview/download limit. Use the saved run folder.')
+        try:
+            text = data.decode('utf-8')
+            if '\x00' in text:
+                text = None
+        except UnicodeDecodeError:
+            text = None
+        return {'name': name, 'size': len(data), 'text': text, 'base64': base64.b64encode(data).decode('ascii')}
 
     def review(self, run_id, key, review):
         if not isinstance(run_id, str) or not re.fullmatch(r'[a-f0-9]{32}', run_id):

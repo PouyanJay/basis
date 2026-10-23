@@ -136,6 +136,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except Exception:
                     self._json(503, {'error': 'Could not save to the OS credential store. Install local dependencies and unlock the store.'}); return
                 self._json(200, {'saved': True, 'name': name}); return
+            if self.path == '/api/local/artifacts':
+                self._json(200, self.runner.artifacts(item.get('id'), item.get('key'))); return
+            if self.path == '/api/local/artifact':
+                self._json(200, self.runner.artifact(item.get('id'), item.get('name'), item.get('key'))); return
             if self.path == '/api/local/evaluations':
                 self._json(200, {'evaluations': self.runner.history()}); return
             if self.path == '/api/local/stop':
