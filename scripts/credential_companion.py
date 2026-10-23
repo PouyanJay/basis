@@ -59,11 +59,13 @@ from model_discovery import discover
 
 from judge_settings import JudgeSettings
 from evidence_package import build_package
+from recommendations import Recommendations
 
 class Runner(EvaluationRunner):
     def __init__(self, folder=None):
         super().__init__(folder, ROOT, lambda: vault(), lambda: docker_ready(), required_key, ALLOWED)
         self.judge_settings = JudgeSettings(self.folder, lambda: vault())
+        self.recommendations = Recommendations(self, self.judge_settings)
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -139,6 +141,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self._json(200, manager.models(item.get('provider'), item.get('key'))); return
                 if self.path == '/api/local/judge-save':
                     self._json(200, manager.save(item.get('provider'), item.get('model'))); return
+            if self.path.startswith('/api/local/recommendation-'):
+                manager = self.runner.recommendations
+                if self.path == '/api/local/recommendation-status':
+                    self._json(200, manager.status(item.get('id'),item.get('excludedSuites'))); return
+                if self.path == '/api/local/recommendation-start':
+                    self._json(202, manager.start(item.get('id'),item.get('excludedSuites',[]),item.get('consent'))); return
+                if self.path == '/api/local/recommendation-stop':
+                    self._json(200, manager.stop(item.get('id'))); return
             if self.path == '/api/local/evidence-package':
                 self._json(200, build_package(self.runner,item.get('id'))); return
             if self.path == '/api/local/models':

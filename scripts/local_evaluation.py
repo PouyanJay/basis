@@ -129,6 +129,10 @@ class EvaluationRunner:
         for path in sorted((self.folder / 'evaluations').glob('*/result.json'), reverse=True):
             try:
                 job = json.loads(path.read_text())
+                from recommendations import ledger
+                judge = ledger(path.parent)
+                job['judgeRuns'] = judge['calls'] if (path.parent/'recommendations.json').exists() else job.get('judgeRuns',[])
+                job['recommendationHistory'] = judge['generations']
                 job["usageSummary"] = summaries(job)
                 rows.append(job)
             except (OSError, ValueError):
@@ -165,7 +169,7 @@ class EvaluationRunner:
                 raise ValueError('Attempt not found.')
         files = {}
         if key is None:
-            for name in ('plan.json', 'result.json'):
+            for name in ('plan.json', 'result.json', 'recommendations.json', *[p.name for p in directory.glob('judge-evidence-*.json') if re.fullmatch(r'judge-evidence-[a-f0-9]{32}\.json',p.name)]):
                 path = directory / name
                 if path.is_file() and not path.is_symlink():
                     files[name] = path

@@ -277,7 +277,7 @@ Legacy runs are not backfilled. Manual review costs stay separate from telemetry
   in storage, with four decimal places (or `< $0.0001`) in the UI.
 - Interrupted runs can omit billed usage. Observed measurements are saved during
   execution, but neither partial counts nor client estimates establish the bill.
-  Judge accounting is separate; no judge calls are made by this feature.
+  Judge accounting is separate; recommendation calls are recorded in their own ledger.
 
 Accounting references: [Claude cost tracking](https://code.claude.com/docs/en/agent-sdk/cost-tracking),
 [Codex JSON mode](https://learn.chatgpt.com/docs/non-interactive-mode), and
@@ -306,5 +306,58 @@ human reviews, and allowlisted artifacts. It excludes private grader inputs and
 keeps candidate identities outside the quality-assessment input. Artifact text
 remains explicitly untrusted; identity masking is not guaranteed if code reveals
 it. Evidence links are recorded, not fetched. The digest changes with included
-evidence, enabling future stale-recommendation detection. This stage does not
-send the package to a judge or generate recommendations.
+evidence, enabling stale-recommendation detection. Building the package alone does not
+send anything to a provider; generation is an explicit user action.
+
+
+### Judge recommendations
+
+Results retains the detailed results as its first tab. Recommendation is the
+second tab, with a compact five-or-more-model table, evidence links, expandable
+analysis, Copy and Markdown export. Generate explicitly authorizes up to two
+paid calls to the separately configured judge: blinded quality assessment, then
+synthesis against the saved team context, priorities, costs and requirements.
+No paid calls start on page load, review changes, connection testing, or retries
+unless the user clicks Generate/Retry. The selected catalog model must support
+the structured API used by its provider; unsupported models produce an inline
+error rather than silently substituting a different model.
+
+Progress follows real stages: evidence preparation, comparison, recommendation.
+Completed quality summaries appear while synthesis runs. These are report
+findings, not private reasoning or token-by-token output. Stop prevents further
+stages; an already-sent request is allowed to finish so reported usage can be
+retained. Its provider may still charge. Restarted requests are marked interrupted
+and never automatically replayed. Network calls time out after 180 seconds.
+
+`evaluations/<id>/recommendations.json` preserves generations and per-call usage,
+including failed parsing, failed requests, and stopped generations. Frozen
+`judge-evidence-<generation>.json` snapshots preserve evidence, candidate mapping,
+references, suite exclusions and digest. They are available through Saved files.
+Reviews, included-suite changes, and artifact edits mark a report out of date.
+Stale reports retain their original measured snapshot and lose their preferred
+highlight. Original evaluation evidence is never rewritten by the judge.
+
+Reports are structurally validated and escaped before display. Candidate aliases
+and evidence references must exist, every candidate must be assessed exactly
+once, and unknown fields are rejected. Objective measurements are rendered from
+the saved evidence, never from model prose. Artifacts and reviews are untrusted
+input; the judge has no executable tools or browsing. Quality candidate order is
+randomized and reversed for synthesis, which reduces some bias but does not
+establish independence. One-task runs cannot produce a preferred-model badge.
+Mandatory unresolved requirements keep readiness conditional; coding checks do
+not certify organizational controls. The judge can still make mistakes: follow
+the linked evidence and human-review its assessment.
+
+Judge tokens come from provider usage fields (uncached input, output, cache reads
+and writes). Standard global API list-price estimates use exact supported IDs and
+a saved price revision/source; unknown models, nonstandard tiers, large contexts,
+and uncertain cache-write pricing remain unknown rather than being guessed.
+These estimates are not invoices. Current price sources:
+[OpenAI pricing](https://developers.openai.com/api/docs/pricing) and
+[Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing).
+API formats follow [OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
+and [Anthropic Messages](https://platform.claude.com/docs/en/build-with-claude/working-with-messages).
+
+Validation uses fake providers through the real HTTP and browser paths:
+`python tests/recommendation_ui_test.py` and `python -m unittest discover -s tests -p 'test_recommendations.py'`.
+No live paid judge call is required by the test suite.
