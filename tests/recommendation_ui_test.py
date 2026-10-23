@@ -25,14 +25,18 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Results',exact=True).click()
  page.get_by_role('tab',name='Recommendation',exact=True).click()
  page.get_by_role('button',name='Generate recommendation',exact=True).click()
- page.get_by_text('Comparing 5 models',exact=True).wait_for()
- page.wait_for_function('document.querySelector(".rec-stages .current")?.textContent.includes("Comparing models")')
+ page.locator('.rec-comparison tbody tr').first.wait_for()
+ page.wait_for_function('document.querySelector(".rec-stages .current")?.textContent.includes("Comparison")')
  out=ROOT/'test-results/recommendation';out.mkdir(parents=True,exist_ok=True)
  page.screenshot(path=str(out/'generating-desktop.png'),full_page=True)
  assert page.locator('.rec-comparison tbody tr').count()==5
+ before=page.locator('#rec-elapsed').inner_text()
+ page.wait_for_timeout(2100)
+ assert page.locator('#rec-elapsed').inner_text()!=before
  quality.set()
- page.wait_for_function('document.querySelector(".rec-stages .current")?.textContent.includes("Writing recommendation")')
- assert page.locator('.rec-progress-output li').count()==5
+ page.wait_for_function('document.querySelector(".rec-stages .current")?.textContent.includes("Recommendation")')
+ assert page.locator('.rec-quality section').count()==5
+ assert page.get_by_text('Model comparison completed',exact=True).is_visible()
  writing.set()
  page.get_by_text('Continue with a controlled pilot.',exact=True).wait_for()
  assert page.locator('.rec-preferred').count()==1
@@ -40,8 +44,17 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  page.screenshot(path=str(out/'completed-desktop.png'),full_page=True)
  page.get_by_text('Detailed comparison',exact=False).first.click()
  assert page.get_by_text('Tradeoffs',exact=True).is_visible()
- page.get_by_text('Evidence & methodology',exact=False).first.click()
+ page.get_by_role('tab',name='Method',exact=True).click()
  assert page.get_by_text('basis-judge-v2',exact=True).is_visible()
+ assert page.locator('.rec-evidence-tabs [aria-selected=true]').count()==1
+ page.locator('#rec-evidence').screenshot(path=str(out/'evidence-method.png'),animations='disabled')
+ page.get_by_role('tab',name='Usage',exact=True).click()
+ assert page.locator('.rec-call-table tbody tr').count()==2
+ page.locator('#rec-evidence').screenshot(path=str(out/'evidence-usage.png'),animations='disabled')
+ page.get_by_role('tab',name='Sources',exact=True).click()
+ assert page.get_by_text('15 included',exact=True).is_visible()
+ assert page.locator('.rec-judge-name').count()==1
+ assert page.get_by_text('Judge settings',exact=True).count()==0
  with page.expect_download() as download:
   page.get_by_role('button',name='Export',exact=True).last.click()
  assert 'controlled pilot' in pathlib.Path(download.value.path()).read_text()
@@ -72,8 +85,8 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  assert 'rate limit' in page.locator('.rec-notice').first.inner_text()
  quality.clear();writing.clear();runner.recommendations.request=request
  page.get_by_role('button',name='Retry recommendation',exact=True).click()
- page.get_by_text('Comparing 5 models',exact=True).wait_for()
- page.wait_for_function('document.querySelector(".rec-stages .current")?.textContent.includes("Comparing models")')
+ page.locator('.rec-comparison tbody tr').first.wait_for()
+ page.wait_for_function('document.querySelector(".rec-stages .current")?.textContent.includes("Comparison")')
  page.get_by_role('button',name='Stop',exact=True).click()
  page.get_by_text('Stopping after current request',exact=True).wait_for()
  quality.set()

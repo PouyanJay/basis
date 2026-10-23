@@ -361,3 +361,10 @@ and [Anthropic Messages](https://platform.claude.com/docs/en/build-with-claude/w
 Validation uses fake providers through the real HTTP and browser paths:
 `python tests/recommendation_ui_test.py` and `python -m unittest discover -s tests -p 'test_recommendations.py'`.
 No live paid judge call is required by the test suite.
+
+Recommendation activity shows recorded preparation/call timestamps, with a live
+elapsed clock and an indeterminate indicator while a request is in flight. It
+does not invent token-level progress. The Evidence panel separates Sources,
+Method and Usage; coverage is derived from the frozen judge snapshot (including
+older generations), and all-generation judge costs include failed calls. Tabs
+and expanded sections remain stable during polling.

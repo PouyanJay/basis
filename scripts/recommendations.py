@@ -88,6 +88,20 @@ def package_for(runner, run_id, excluded):
     return package
 
 
+def evidence_summary(package):
+    evidence = package['evidence']
+    attempts = evidence['attempts']
+    files = [f for a in attempts for f in a['artifacts']]
+    required = [r for r in evidence['requirements'] if r['required']]
+    return {'filesIncluded':sum(bool(f['included']) for f in files),
+            'filesOmitted':sum(not f['included'] for f in files),
+            'checksRecorded':sum(type(a['measurements'].get('checkPassed')) is bool for a in attempts),
+            'attempts':len(attempts),
+            'humanReviewed':sum(a.get('humanReview') is not None for a in attempts),
+            'requirementsPending':sum(r['status']!='pass' for r in required),
+            'requirementsTotal':len(required)}
+
+
 class Recommendations:
     def __init__(self, runner, settings, request=None):
         self.runner, self.settings = runner, settings
@@ -120,8 +134,16 @@ class Recommendations:
             current = copy.deepcopy(doc['generations'][-1]) if doc['generations'] else None
             calls = copy.deepcopy(doc['calls'])
         if current:
+            # Older generations obtain coverage from their frozen snapshot, never
+            # from subsequently changed reviews or files.
+            snapshot = current.get('evidenceSnapshot','')
+            if not current.get('evidenceSummary') and re.fullmatch(r'judge-evidence-[a-f0-9]{32}\.json',snapshot):
+                path = self.directory(run_id)/snapshot
+                if path.is_file() and not path.is_symlink():
+                    try: current['evidenceSummary'] = evidence_summary(json.loads(path.read_text()))
+                    except (OSError,ValueError,KeyError,TypeError): pass
             try:
-                current['stale'] = package_for(self.runner,run_id,excluded if excluded is not None else current['excludedSuites'])['evidenceDigest'] != current.get('evidenceDigest')
+                current['stale'] = bool(current.get('evidenceDigest')) and package_for(self.runner,run_id,excluded if excluded is not None else current['excludedSuites'])['evidenceDigest'] != current.get('evidenceDigest')
             except (ValueError,OSError): current['stale'] = True
         return {'recommendation':current,'judgeRuns':calls,'usage':aggregate([c.get('usage') or {} for c in calls])}
 
@@ -223,7 +245,7 @@ class Recommendations:
             package['judgeConfig'] = {'provider':generation['provider'],'model':generation['model'],'promptVersion':VERSION,'systemInstructions':SYSTEM,'maxOutputTokensPerCall':8000,'candidateOrder':order}
             atomic(self.directory(run_id)/('judge-evidence-'+generation_id+'.json'),package)
             if self.cancel.is_set(): raise InterruptedError()
-            generation = self.update(run_id,status='comparing',evidenceDigest=package['evidenceDigest'],candidateMap=package['candidateMap'],
+            generation = self.update(run_id,status='comparing',evidencePreparedAt=time.time(),evidenceSummary=evidence_summary(package),evidenceDigest=package['evidenceDigest'],candidateMap=package['candidateMap'],
                                      references=package['references'],candidateOrder=order,taskDefinitions=package['evidence']['taskDefinitions'],
                                      measurementSnapshot=[{k:a[k] for k in ('candidate','taskIndex','measurements')} for a in package['evidence']['attempts']],taskCount=len(package['evidence']['taskDefinitions']),
                                      evidenceSnapshot='judge-evidence-'+generation_id+'.json')

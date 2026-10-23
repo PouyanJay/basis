@@ -223,7 +223,7 @@ try:
   page.wait_for_function('!document.querySelector("#start-evaluation").disabled')
   page.locator('#start-evaluation').click()
   page.wait_for_function('document.querySelector("#evaluation-progress").textContent.includes("6 of 6")')
-  nav('Results');page.locator('.attempt-row').first.wait_for()
+  nav('Results');page.wait_for_function('id=>document.querySelector("#evaluation-history")?.value===id && document.querySelector(".results-header .result-status")?.textContent.includes("completed")',arg=runner.snapshot()['id'])
   assert len({r['folder'] for r in runner.snapshot()['results']})==6
   usage=runner.snapshot()['usageSummary']
   assert usage['candidates']['estimatedCostUsd']['value']==.004936
