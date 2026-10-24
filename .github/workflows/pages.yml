@@ -23,6 +23,7 @@ jobs:
           python tests/local_ui_test.py
           python tests/judge_ui_test.py
           python tests/recommendation_ui_test.py
+          python tests/platform_review_ui_test.py
           python tests/setup_handoff_test.py
           python tests/benchmark_ui_test.py
       - name: Stage public static application only

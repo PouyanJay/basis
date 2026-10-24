@@ -60,12 +60,28 @@ from model_discovery import discover
 from judge_settings import JudgeSettings
 from evidence_package import build_package
 from recommendations import Recommendations
+from platform_review import PlatformReviews, eligible as review_eligible
 
 class Runner(EvaluationRunner):
     def __init__(self, folder=None):
         super().__init__(folder, ROOT, lambda: vault(), lambda: docker_ready(), required_key, ALLOWED)
         self.judge_settings = JudgeSettings(self.folder, lambda: vault())
         self.recommendations = Recommendations(self, self.judge_settings)
+        self.platform_reviews = PlatformReviews(self, self.judge_settings)
+
+    def start(self, plan, consent):
+        if not isinstance(plan,dict):raise ValueError('Invalid evaluation plan.')
+        setup=plan.get('setup',{})
+        include=review_eligible(setup) and plan.get('platformReview',True) is not False
+        if include:self.platform_reviews.validate_start(setup)
+        job=super().start(plan,consent)
+        if include:
+            try:self.platform_reviews.start(job['id'],consent=True)
+            except (ValueError,RuntimeError) as error:
+                # Coding has already started; keep research failure isolated and retryable.
+                self.platform_reviews.save(job['id'],{'generations':[{'id':uuid.uuid4().hex,'status':'failed','units':[],'requirements':[],'configurations':[],'error':str(error),'startedAt':time.time()}],'calls':[]})
+        return job
+
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -141,6 +157,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self._json(200, manager.models(item.get('provider'), item.get('key'))); return
                 if self.path == '/api/local/judge-save':
                     self._json(200, manager.save(item.get('provider'), item.get('model'))); return
+            if self.path.startswith('/api/local/platform-review-'):
+                manager=self.runner.platform_reviews
+                if self.path.endswith('-status'):
+                    self._json(200,manager.status(item.get('id')));return
+                if self.path.endswith('-start'):
+                    self._json(202,manager.start(item.get('id'),item.get('consent'),item.get('refresh') is True));return
+                if self.path.endswith('-stop'):
+                    self._json(200,manager.stop(item.get('id')));return
             if self.path.startswith('/api/local/recommendation-'):
                 manager = self.runner.recommendations
                 if self.path == '/api/local/recommendation-status':
@@ -169,6 +193,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if self.path == '/api/local/evaluations':
                 self._json(200, {'evaluations': self.runner.history()}); return
             if self.path == '/api/local/stop':
+                job=self.runner.snapshot()
+                if job:self.runner.platform_reviews.stop(job['id'])
                 self._json(200, {'job': self.runner.stop()}); return
             if self.path == '/api/local/review':
                 self._json(200, {'job': self.runner.review(item.get('id'), item.get('key'), item.get('review'))}); return
@@ -209,6 +235,8 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        if runner.platform_reviews.active_run:
+            runner.platform_reviews.stop(runner.platform_reviews.active_run)
         runner.lite.stop()
         runner.stop()
         server.server_close()

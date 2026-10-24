@@ -45,11 +45,11 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  page.get_by_text('Detailed comparison',exact=False).first.click()
  assert page.get_by_text('Tradeoffs',exact=True).is_visible()
  page.get_by_role('tab',name='Method',exact=True).click()
- assert page.get_by_text('basis-judge-v2',exact=True).is_visible()
+ assert page.get_by_text('basis-judge-v3',exact=True).is_visible()
  assert page.locator('.rec-evidence-tabs [aria-selected=true]').count()==1
  page.locator('#rec-evidence').screenshot(path=str(out/'evidence-method.png'),animations='disabled')
  page.get_by_role('tab',name='Usage',exact=True).click()
- assert page.locator('.rec-call-table tbody tr').count()==2
+ assert page.locator('.rec-call-table tbody tr').count()==4
  page.locator('#rec-evidence').screenshot(path=str(out/'evidence-usage.png'),animations='disabled')
  page.get_by_role('tab',name='Sources',exact=True).click()
  assert page.get_by_text('15 included',exact=True).is_visible()
@@ -72,7 +72,7 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  page.get_by_text('Evidence or selected suites changed. This assessment is out of date; regenerate before using it.',exact=True).wait_for()
  assert page.locator('.rec-preferred').count()==0
  # No implicit paid reruns on refresh, tab changes or review changes.
- assert len(runner.recommendations.status(RUN)['judgeRuns'])==2
+ assert len(runner.recommendations.status(RUN)['judgeRuns'])==4
  page.reload()
  page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Results',exact=True).click()
  assert page.get_by_role('tab',name='Results',exact=True).get_attribute('aria-selected')=='true'
@@ -92,7 +92,7 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  page.get_by_text('Stopping after current request',exact=True).wait_for()
  quality.set()
  page.get_by_text('Stopped',exact=True).wait_for()
- assert len(runner.recommendations.status(RUN)['judgeRuns'])==4
+ assert len(runner.recommendations.status(RUN)['judgeRuns'])==6
  assert not errors,errors
  print('PASS generating/final 5-model canvases, stages, export, responsive layout, stale review, reload; no paid calls')
  browser.close();server.shutdown()

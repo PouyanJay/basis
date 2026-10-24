@@ -34,6 +34,17 @@ Basis brings those questions into one study. It connects an engineering profile,
 
 ## What you can do
 
+### Cross-provider organization review
+
+Select models from at least two different model providers to enable organization requirements and platform review. Models from the same provider share the platform assessment. Configure the judge in Settings, set each product's target plan and deployment, and launch from Run evaluation. Platform review is included by default and can be excluded under Adjust scope.
+
+Research runs independently of coding tests. Results → Organization fit shows requirement findings, supporting official-source quotes, retrieval dates, and separate research usage. Retry resumes failed topics without repeating completed topics; Refresh sources creates a new evidence generation. Recommendation synthesis uses the saved findings alongside measured coding results, while mandatory unknown or unmet requirements remain unresolved adoption gates.
+
+Sources are restricted to curated official domains. The local collector retrieves HTML, Markdown and public PDFs, follows validated official links, caches documents for 24 hours, and freezes source content and hashes per run. It retrieves relevant passages for the judge and validates every supporting quote against those passages. This is bounded research, not a complete website crawl. Blocked or inaccessible pages remain unavailable; public documentation does not verify actual tenant settings or contractual commitments. No MCP connection is required.
+
+Research and judge calls use the configured judge credential and may incur API charges. Tests use simulated providers; real paid provider calls are not part of the automated test suite.
+
+
 | Area | Purpose |
 |---|---|
 | **Home** | A guided path through setup, execution, and results. |

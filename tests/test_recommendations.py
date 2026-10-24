@@ -36,7 +36,7 @@ def fixture(tmp):
 
 def fake_request(provider,model,key,instructions,evidence,schema):
     candidates=list(schema['properties']['candidates']['properties'])
-    ref='task:0'
+    ref=next(iter(evidence['references']))
     finding={'text':'Independent checks passed for the sampled task.','evidence':[ref]}
     if 'headline' in schema['properties']:
         out={'headline':'Continue with a controlled pilot.','summary':'All models passed this sample; review effort is still unknown.',
@@ -57,14 +57,14 @@ class RecommendationTests(unittest.TestCase):
             manager.start(RUN,[],True);manager.worker.join(5)
             value=manager.status(RUN,[]);r=value['recommendation']
             self.assertEqual(r['status'],'completed');self.assertFalse(r['stale'])
-            self.assertEqual(len(value['judgeRuns']),2);self.assertEqual(value['usage']['inputTokens']['value'],1800)
-            self.assertAlmostEqual(value['usage']['estimatedCostUsd']['value'],.0382)
+            self.assertEqual(len(value['judgeRuns']),4);self.assertEqual(value['usage']['inputTokens']['value'],3600)
+            self.assertAlmostEqual(value['usage']['estimatedCostUsd']['value'],.0764)
             self.assertEqual(r['readiness']['status'],'needs_review')
             self.assertEqual(r['evidenceSummary'],{'filesIncluded':15,'filesOmitted':0,'checksRecorded':15,'attempts':15,'humanReviewed':0,'requirementsPending':2,'requirementsTotal':2})
             self.assertGreaterEqual(r['evidencePreparedAt'],r['startedAt'])
             self.assertEqual(r['readiness']['blocking'][0]['status'],'unverified')
             self.assertNotIn('candidateMap',seen[0][4]);self.assertNotIn('model',json.dumps(seen[0][4]['attempts']))
-            self.assertEqual(seen[1][4]['candidateOrder'],list(reversed(seen[0][4]['candidates'])))
+            self.assertEqual(seen[-1][4]['candidateOrder'],list(reversed(seen[0][4]['candidates'])))
             self.assertTrue((runner.folder/'evaluations'/RUN/r['evidenceSnapshot']).exists())
             runner.review(RUN,'0:claude-0',{'accepted':True,'notes':'Human reviewed'})
             self.assertTrue(manager.status(RUN,[])['recommendation']['stale'])
@@ -74,7 +74,7 @@ class RecommendationTests(unittest.TestCase):
             doc=json.loads(path.read_text());del doc['generations'][-1]['evidenceSummary'];path.write_text(json.dumps(doc))
             self.assertEqual(manager.status(RUN,[])['recommendation']['evidenceSummary']['humanReviewed'],0)
             self.assertTrue(manager.status(RUN,['Team tasks'])['recommendation']['stale'])
-            self.assertEqual(runner.history()[0]['usageSummary']['judge']['attempts'],2)
+            self.assertEqual(runner.history()[0]['usageSummary']['judge']['attempts'],4)
             self.assertNotIn('judge-secret',(runner.folder/'evaluations'/RUN/'recommendations.json').read_text())
 
     def test_invalid_output_preserves_billed_usage_no_retry(self):
@@ -87,7 +87,7 @@ class RecommendationTests(unittest.TestCase):
             self.assertEqual(status['recommendation']['status'],'failed');self.assertEqual(len(calls),1)
             self.assertEqual(status['judgeRuns'][0]['usage']['inputTokens'],900)
             manager.request=fake_request;manager.start(RUN,[],True);manager.worker.join(5)
-            self.assertEqual(len(manager.status(RUN)['judgeRuns']),3)
+            self.assertEqual(len(manager.status(RUN)['judgeRuns']),5)
 
     def test_stop_blocks_next_call_and_rejects_duplicate_start(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -132,8 +132,13 @@ class RecommendationTests(unittest.TestCase):
             self.assertEqual(value['recommendation']['status'],'failed')
             self.assertEqual(len(value['recommendation']['quality']['candidates']),5)
             self.assertEqual(value['judgeRuns'][-1]['validation'],{'code':'candidate_coverage','expectedCount':5,'receivedCount':4})
-            self.assertEqual(value['usage']['outputTokens']['value'],400)
-            self.assertEqual(len(value['judgeRuns']),2) # No silent paid retry.
+            self.assertEqual(value['usage']['outputTokens']['value'],800)
+            self.assertEqual(len(value['judgeRuns']),4) # No silent paid retry.
+            manager.request=fake_request;manager.start(RUN,[],True);manager.worker.join(5)
+            retried=manager.status(RUN)
+            self.assertEqual(retried['recommendation']['status'],'completed')
+            self.assertEqual(len(retried['judgeRuns']),5) # Reuse all three saved task assessments.
+
 
     def test_usage_exact_prices_unknown_and_cache(self):
         response={'usage':{'input_tokens':1000,'input_tokens_details':{'cached_tokens':100},'output_tokens':200}}

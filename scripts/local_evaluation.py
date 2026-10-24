@@ -143,6 +143,8 @@ class EvaluationRunner:
                 job['judgeRuns'] = judge['calls'] if (path.parent/'recommendations.json').exists() else job.get('judgeRuns',[])
                 job['recommendationHistory'] = judge['generations']
                 job["usageSummary"] = summaries(job)
+                from platform_review import snapshot as platform_snapshot
+                job['platformReview']=platform_snapshot(self.folder,job['id'])
                 rows.append(normalize_completion(job))
             except (OSError, ValueError):
                 continue
@@ -178,7 +180,7 @@ class EvaluationRunner:
                 raise ValueError('Attempt not found.')
         files = {}
         if key is None:
-            for name in ('plan.json', 'result.json', 'recommendations.json', *[p.name for p in directory.glob('judge-evidence-*.json') if re.fullmatch(r'judge-evidence-[a-f0-9]{32}\.json',p.name)]):
+            for name in ('plan.json', 'result.json', 'recommendations.json', 'platform-review.json', *[p.name for p in directory.glob('judge-evidence-*.json') if re.fullmatch(r'judge-evidence-[a-f0-9]{32}\.json',p.name)]):
                 path = directory / name
                 if path.is_file() and not path.is_symlink():
                     files[name] = path
@@ -189,7 +191,26 @@ class EvaluationRunner:
                 continue
             work = directory / 'attempts' / str(index) / candidate
             prefix = '' if key is not None else f'attempts/{index}/{candidate}/'
+            # The grader's config contains held-out reference material; never include it.
+            grading = work.parent / (work.name + '-grading')
+            for name in ('prediction.patch', 'report.json'):
+                path = grading / name
+                if path.is_file() and not path.is_symlink() and not grading.is_symlink() and path.resolve().is_relative_to(directory.resolve()):
+                    files[prefix + 'grading/' + name] = path
             if work.is_dir() and not work.is_symlink() and work.resolve().is_relative_to(directory.resolve()):
+                # Make changed-file context available before the repository listing cap.
+                patch = grading / 'prediction.patch'
+                if prefix+'grading/prediction.patch' in files and patch.stat().st_size <= 1_000_000:
+                    for relative in re.findall(r'^\+\+\+ b/(.+)$', patch.read_text(errors='replace'), re.M):
+                        parts = Path(relative).parts
+                        target = work / relative
+                        if (not parts or Path(relative).is_absolute() or '..' in parts or
+                            any(part in EXCLUDED or part.startswith('.env') for part in parts) or
+                            target.suffix in {'.pem', '.key', '.p12'} or
+                            any((work.joinpath(*parts[:i])).is_symlink() for i in range(1,len(parts)+1))):
+                            continue
+                        if target.is_file() and target.resolve().is_relative_to(work.resolve()):
+                            files[prefix+'workspace/'+relative] = target
                 for base, dirs, names in os.walk(work, followlinks=False):
                     dirs[:] = sorted(d for d in dirs if d not in EXCLUDED and not d.startswith('.env') and not Path(base, d).is_symlink())
                     for name in sorted(names):
@@ -201,12 +222,6 @@ class EvaluationRunner:
                         files[prefix + 'workspace/' + path.relative_to(work).as_posix()] = path
                         if len(files) >= 1000:
                             return files, True
-            # The grader's config contains held-out reference material; never include it.
-            grading = work.parent / (work.name + '-grading')
-            for name in ('prediction.patch', 'report.json'):
-                path = grading / name
-                if path.is_file() and not path.is_symlink() and not grading.is_symlink() and path.resolve().is_relative_to(directory.resolve()):
-                    files[prefix + 'grading/' + name] = path
         return files, False
 
     def artifacts(self, run_id, key=None):

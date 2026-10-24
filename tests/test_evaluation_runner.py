@@ -43,7 +43,7 @@ class EvaluationTests(unittest.TestCase):
         (grading / 'report.json').write_text('{}')
         key = '0:claude-test'
         names = [f['name'] for f in self.runner.artifacts(run_id,key)['files']]
-        self.assertEqual(names, ['workspace/solution.py','grading/report.json'])
+        self.assertEqual(sorted(names), ['grading/report.json','workspace/solution.py'])
         artifact = self.runner.artifact(run_id,'workspace/solution.py',key)
         self.assertEqual(base64.b64decode(artifact['base64']).decode(), artifact['text'])
         for name in ('../result.json','workspace/.env','grading/config.json','workspace/linked.py'):

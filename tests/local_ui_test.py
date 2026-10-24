@@ -95,6 +95,9 @@ try:
   page.get_by_role('tab',name='Benchmarks',exact=True).click()
   assert page.locator('.stage-navigation,.connection-strip').count()==0
   page.get_by_role('tab',name='Run evaluation',exact=True).click()
+  if page.locator('#platform-review-scope').count():
+   page.locator('.evaluation-scope summary').click()
+   page.locator('#platform-review-scope').uncheck()
   page.locator('#evaluation-consent').check();assert page.locator('#start-evaluation').is_disabled()
   nav('Set up','Services & criteria')
   page.locator('[data-local-key="ANTHROPIC_API_KEY"]').fill('test-only-second-key')
@@ -226,6 +229,9 @@ try:
   assert page.get_by_role('tab',name='Benchmarks',exact=True).get_attribute('aria-selected')=='true'
   page.get_by_role('button',name='Continue to run',exact=True).click()
   assert page.locator('#evaluation-tabpanel-benchmarks').is_hidden()
+  if page.locator('#platform-review-scope').count():
+   page.locator('.evaluation-scope summary').click()
+   page.locator('#platform-review-scope').uncheck()
   page.locator('#evaluation-consent').check()
   page.wait_for_function('!document.querySelector("#start-evaluation").disabled')
   page.locator('#start-evaluation').click()
