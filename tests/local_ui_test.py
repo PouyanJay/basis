@@ -56,18 +56,18 @@ try:
   def nav(section,label=None):
    page.get_by_role('navigation',name='Main navigation').get_by_role('button',name=section,exact=True).click()
    if label:page.get_by_role('navigation',name=section+' sections').get_by_role('button',name=label,exact=True).click()
-  nav('Set up','Services & criteria')
+  nav('Set up','Services')
   for name in ['Cursor','Devin','OpenCode']:page.get_by_role('button',name=f'Remove {name} from evaluation',exact=True).click()
   assert page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Credentials',exact=True).count()==0
   assert page.get_by_role('combobox',name='Codex model',exact=True).is_disabled()
   assert page.get_by_role('combobox',name='Claude Code model',exact=True).is_disabled()
-  nav('Set up','Services & criteria')
+  nav('Set up','Services')
   page.locator('[data-local-key="OPENAI_API_KEY"]').fill('test-only-key-never-real')
   page.locator('[data-save-local="OPENAI_API_KEY"]').click()
   page.wait_for_function('document.querySelector(\'[data-key-status="OPENAI_API_KEY"]\').textContent==="Configured"')
   assert page.locator('[data-local-key="OPENAI_API_KEY"]').input_value()==''
   assert 'test-only-key-never-real' not in page.evaluate('JSON.stringify(localStorage)')
-  nav('Set up','Services & criteria')
+  nav('Set up','Services')
   page.wait_for_function('document.querySelector(\'[data-key-status="OPENAI_API_KEY"]\').textContent==="Configured"')
   # Saved keys unlock a real discovery request; rejected/empty catalogs cannot be selected.
   for key,message in [('rejected-key-test','Models unavailable'),('empty-key-test','No models returned')]:
@@ -92,14 +92,12 @@ try:
   page.get_by_role('combobox',name='Codex model',exact=True).click()
   page.get_by_role('option',name='Provider model · returned-model-v1',exact=True).click()
   nav('Run evaluation')
-  page.get_by_role('tab',name='Benchmarks',exact=True).click()
   assert page.locator('.stage-navigation,.connection-strip').count()==0
-  page.get_by_role('tab',name='Run evaluation',exact=True).click()
   if page.locator('#platform-review-scope').count():
    page.locator('.evaluation-scope summary').click()
    page.locator('#platform-review-scope').uncheck()
   page.locator('#evaluation-consent').check();assert page.locator('#start-evaluation').is_disabled()
-  nav('Set up','Services & criteria')
+  nav('Set up','Services')
   page.locator('[data-local-key="ANTHROPIC_API_KEY"]').fill('test-only-second-key')
   page.locator('[data-save-local="ANTHROPIC_API_KEY"]').click()
   page.wait_for_function('document.querySelector(\'[data-key-status="ANTHROPIC_API_KEY"]\').textContent==="Configured"')
@@ -129,16 +127,12 @@ try:
   assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
   page.screenshot(path=str(out/'discovered-models-mobile.png'))
   page.keyboard.press('Escape');page.set_viewport_size({'width':1440,'height':1000})
-  nav('Set up','Tasks')
+  nav('Set up','Tasks & Benchmarks')
   page.get_by_role('button',name='Add task',exact=True).click()
   page.locator('.modal [name="name"]').fill('Team greeting')
   page.locator('.modal [name="acceptance"]').fill('Return hello')
   page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
-  nav('Run evaluation')
-  page.get_by_role('tab',name='Benchmarks',exact=True).click()
-  assert page.locator('.stage-navigation,.connection-strip').count()==0
-  # Details stay out of the form, but remain accessible by pointer, keyboard, and tap.
-  assert page.get_by_role('tab',name='Benchmarks',exact=True).get_attribute('aria-selected')=='true'
+  assert page.get_by_role('heading',name='Tasks & Benchmarks',exact=True).is_visible()
   panel=page.locator('.benchmark-panel')
   assert 'leaderboard' not in panel.inner_text()
   page.evaluate('window.scrollTo(0,0)')
@@ -170,11 +164,6 @@ try:
   page.set_viewport_size({'width':1440,'height':1000})
   assert page.get_by_role('button',name='Unavailable',exact=True).count()==5
   assert page.locator('[data-nav="benchmarks"]').count()==0
-  page.get_by_role('tab',name='Benchmarks',exact=True).focus()
-  page.keyboard.press('ArrowRight')
-  assert page.locator('#evaluation-tabpanel-benchmarks').is_hidden()
-  page.keyboard.press('ArrowLeft')
-  assert page.locator('#evaluation-tabpanel-benchmarks').is_visible()
   # Simulate asynchronous preparation, failure, retry, cancellation, and ready.
   prep={'status':'idle'}
   page.route('**/api/local/swebench-status',lambda route:route.fulfill(json={'benchmark':prep}))
@@ -212,7 +201,7 @@ try:
   page.get_by_role('button',name='Remove SWE-bench Lite',exact=True).wait_for()
   assert page.locator('#swebench-count').is_disabled()
   page.reload()
-  nav('Run evaluation')
+  nav('Set up','Tasks & Benchmarks')
   page.get_by_role('button',name='Remove SWE-bench Lite',exact=True).wait_for()
   page.get_by_role('button',name='Remove SWE-bench Lite',exact=True).click()
   assert page.locator('#add-swebench').is_visible()
@@ -226,9 +215,8 @@ try:
   page.get_by_text('1 imported · unverified',exact=True).wait_for()
   page.locator('.benchmark-imported summary').click()
   assert page.get_by_text('Fixture agent · fixture-model',exact=True).is_visible()
-  assert page.get_by_role('tab',name='Benchmarks',exact=True).get_attribute('aria-selected')=='true'
-  page.get_by_role('button',name='Continue to run',exact=True).click()
-  assert page.locator('#evaluation-tabpanel-benchmarks').is_hidden()
+  page.get_by_role('button',name='Continue to evaluation',exact=True).click()
+  assert page.locator('.benchmark-panel').count()==0
   if page.locator('#platform-review-scope').count():
    page.locator('.evaluation-scope summary').click()
    page.locator('#platform-review-scope').uncheck()
@@ -294,11 +282,11 @@ try:
   assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
   page.screenshot(path=str(out/'results-mobile.png'),full_page=True)
   page.set_viewport_size({'width':1440,'height':1000})
-  nav('Set up','Services & criteria');page.reload();nav('Set up','Services & criteria')
+  nav('Set up','Services');page.reload();nav('Set up','Services')
   page.wait_for_function('document.querySelector(\'[data-key-status="OPENAI_API_KEY"]\').textContent==="Configured"')
   out=ROOT/'test-results/local';out.mkdir(parents=True,exist_ok=True)
   page.screenshot(path=str(out/'settings-desktop.png'),full_page=True)
-  nav('Run evaluation');page.get_by_role('tab',name='Run evaluation',exact=True).click();page.locator('#evaluation-progress').wait_for()
+  nav('Run evaluation');page.locator('#evaluation-progress').wait_for()
   assert page.locator('.run-phases .done').count()==4
   assert page.locator('.run-phases .current').count()==0
   console=page.locator('[data-console]').filter(has_text='Claude Code').first
@@ -351,8 +339,8 @@ try:
   touch.on('pageerror',lambda e:errors.append(str(e)))
   touch.goto(f'http://127.0.0.1:{server.server_port}/')
   touch.get_by_role('button',name='Toggle menu',exact=True).tap()
-  touch.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Run evaluation',exact=True).tap()
-  touch.get_by_role('tab',name='Benchmarks',exact=True).tap()
+  touch.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Set up',exact=True).tap()
+  touch.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Tasks & Benchmarks',exact=True).tap()
   touch.get_by_role('button',name='About SWE-bench Lite',exact=True).tap()
   assert touch.get_by_role('tooltip').is_visible()
   touch.locator('#swebench-count').tap()

@@ -110,7 +110,7 @@ The local runner supports these adapters:
 | Codex | `codex` | `OPENAI_API_KEY` |
 | OpenCode | `opencode` | `OPENAI_API_KEY` for `openai/model`, or `ANTHROPIC_API_KEY` for `anthropic/model` |
 
-Each supported service attempts every selected task sequentially. Unsupported services block automatic execution with an actionable readiness message; they are never silently omitted. Set an explicit model in **Set up → Services & criteria** for reproducibility. An empty model uses the CLI default, which is labeled as unpinned; OpenCode requires `openai/model` or `anthropic/model`.
+Each supported service attempts every selected task sequentially. Unsupported services block automatic execution with an actionable readiness message; they are never silently omitted. Set an explicit model in **Set up → Services** for reproducibility. An empty model uses the CLI default, which is labeled as unpinned; OpenCode requires `openai/model` or `anthropic/model`.
 
 ### Credentials and execution boundaries
 
@@ -136,7 +136,7 @@ The companion binds to loopback, validates Host and Origin, requires a session t
 
 ### Integrated benchmarks
 
-**SWE-bench Lite** is the active benchmark. On **Run evaluation → Benchmarks**, choose 1–300 tasks (default 5), then **Add benchmark**. The card reports checking, downloading, preparation, errors with retry, and readiness. Cancel stops preparation; retry reuses downloaded tools and images. Removing a benchmark excludes it from the next run without deleting its cache. Preparation does not call model providers.
+**SWE-bench Lite** is the active benchmark. On **Set up → Tasks & Benchmarks**, choose 1–300 tasks (default 5), then **Add benchmark**. The card reports checking, downloading, preparation, errors with retry, and readiness. Cancel stops preparation; retry reuses downloaded tools and images. Removing a benchmark excludes it from the next run without deleting its cache. Preparation does not call model providers.
 
 Basis pins the dataset to `6ec7bb89b9342f664a54a6e0a6ea6501d3437cc2`, the official `swebench` package to `3.0.15`, and each downloaded image by digest. Tasks are sorted by instance ID and shuffled with seed 0, so every service/model receives the same selected tasks. A dedicated Python environment installs automatically. Docker needs at least 8 GB RAM and 20 GB free host disk for initial preparation; larger selections require more disk, including space in Docker's own disk image. Official x86 images run through Docker's emulation on Apple Silicon.
 
@@ -240,7 +240,7 @@ Issues and pull requests are welcome. Include reproduction steps for bugs, sourc
 
 ### Model selection
 
-Under **Set up → Services & criteria**, save a provider key first. The local companion fetches models using that key; the selector stays disabled until discovery succeeds. Keys already saved in Settings are detected automatically. Use Refresh to reload the catalog. Replacing a key discards the previous catalog. Hosted setup transfers to the local app before discovery; no provider keys are sent from the hosted page.
+Under **Set up → Services**, save a provider key first. The local companion fetches models using that key; the selector stays disabled until discovery succeeds. Keys already saved in Settings are detected automatically. Use Refresh to reload the catalog. Replacing a key discards the previous catalog. Hosted setup transfers to the local app before discovery; no provider keys are sent from the hosted page.
 
 - Claude Code: authenticated [Anthropic Models API](https://platform.claude.com/docs/en/api/models/list), including pagination.
 - Codex: authenticated [OpenAI Models API](https://developers.openai.com/api/reference/resources/models/methods/list).
@@ -259,7 +259,7 @@ Activity retains the latest 300 lines across the run (up to 2,000 characters eac
 
 ### Compare models within a service
 
-In **Set up → Services & criteria**, save the provider key, then add one or more models from the authenticated catalog. Selected models appear below the selector and can be removed individually (up to ten per service). Each selected service–model combination attempts every team task and selected benchmark task separately, using the same starting files and independent checks.
+In **Set up → Services**, save the provider key, then add one or more models from the authenticated catalog. Selected models appear below the selector and can be removed individually (up to ten per service). Each selected service–model combination attempts every team task and selected benchmark task separately, using the same starting files and independent checks.
 
 Each combination has its own workspace, console, attempt results, and human reviews. Results compare models in separate rows, including models from the same service. Requirements remain service-level assessments shared by that service's models. Existing single-model studies and saved results remain readable. More models mean more attempts and potential API charges.
 
@@ -303,7 +303,7 @@ with that credential; Save judge validates the selected ID against that catalog.
 This checks catalog access, not generation capability or judging quality. No
 model is hardcoded and no paid generation request is made by configuration.
 
-Set up → Services & criteria → Requirements groups runtime, provider/account,
+Set up → Team context → Requirements groups runtime, provider/account,
 and organizational requirements. A verified or failed human review requires an
 HTTPS evidence link, notes, reviewer, and review timestamp. Previous review
 versions remain in the study's `gateEvidence` history. Existing unsupported pass

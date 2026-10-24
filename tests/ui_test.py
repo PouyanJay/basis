@@ -25,10 +25,10 @@ with sync_playwright() as p:
   if label:
    page.get_by_role('navigation',name=section+' sections').get_by_role('button',name=label,exact=True).click()
  assert page.get_by_role('navigation',name='Main navigation').get_by_role('button').count()==6
- for section,label,expected in [('Set up',None,'Team context'),('Set up','Services & criteria','Services & criteria'),('Set up','Tasks','Tasks'),('Tool catalog',None,'Tool catalog')]:
+ for section,label,expected in [('Set up',None,'Services'),('Set up','Services','Services'),('Set up','Tasks & Benchmarks','Tasks & Benchmarks'),('Tool catalog',None,'Tool catalog')]:
   navigate(section,label)
   assert page.get_by_role('heading',name=expected,exact=True).count()==1,expected
- navigate('Set up','Tasks')
+ navigate('Set up','Tasks & Benchmarks')
  page.get_by_role('button',name='Add task',exact=True).click()
  page.locator('.modal input[name="name"]').fill('Browser UI test task')
  page.locator('.modal input[name="acceptance"]').fill('Verified by independent tests')
@@ -47,11 +47,11 @@ with sync_playwright() as p:
  assert page.locator('#start-evaluation').count()==0
  assert page.get_by_role('heading',name='Continue locally',exact=True).is_visible()
  assert page.locator('.stage-navigation,.connection-strip').count()==0
- navigate('Set up','Tasks')
+ navigate('Set up','Tasks & Benchmarks')
  assert page.locator('.tabs').count()==0
  assert 'Browser UI test task' in page.locator('body').inner_text()
 
- navigate('Set up','Services & criteria')
+ navigate('Set up','Services')
  # Hosted setup cannot discover models until credentials are transferred locally.
  assert page.locator('input[data-service-model]').count()==0
  assert page.get_by_role('combobox',name='Claude Code model',exact=True).is_disabled()
@@ -60,7 +60,7 @@ with sync_playwright() as p:
  page.get_by_role('option',name='Anthropic',exact=True).click()
  assert page.locator('[data-service-key="opencode"] input').get_attribute('data-local-key')=='ANTHROPIC_API_KEY'
  assert page.get_by_role('combobox',name='OpenCode model',exact=True).is_disabled()
- page.get_by_role('tab',name='Requirements',exact=True).click()
+ page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Team context',exact=True).click()
  page.locator('[data-requirement="retention"]').click()
  page.get_by_role('combobox',name='Status',exact=True).click()
  page.get_by_role('option',name='Failed',exact=True).click()
@@ -69,15 +69,15 @@ with sync_playwright() as p:
  page.locator('[name="reviewer"]').fill('Test reviewer')
  page.get_by_role('button',name='Save review',exact=True).click()
  assert 'Failed' in page.locator('[data-requirement="retention"]').inner_text()
- page.get_by_role('tab',name='Services',exact=True).click()
+ page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Services',exact=True).click()
  page.get_by_role('button',name='Remove Claude Code from evaluation',exact=True).click()
  page.get_by_role('button',name='Include Claude Code in evaluation',exact=True).click()
- page.get_by_role('tab',name='Requirements',exact=True).click()
+ page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Team context',exact=True).click()
  page.get_by_role('combobox',name='Requirement service',exact=True).click()
  page.get_by_role('option',name='Claude Code',exact=True).click()
  assert 'Failed' in page.locator('[data-requirement="retention"]').inner_text()
- page.get_by_role('tab',name='Services',exact=True).click()
- navigate('Set up')
+ page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Services',exact=True).click()
+ navigate('Set up','Team context')
  page.get_by_role('button',name='Increase Engineers',exact=True).click()
  assert page.locator('[data-path="org.developers"]').input_value()=='1'
  page.get_by_role('button',name='Decrease Engineers',exact=True).click()
@@ -101,8 +101,8 @@ with sync_playwright() as p:
  assert page.get_by_role('heading',name='Continue locally',exact=True).is_visible()
  assert page.locator('.stage-navigation,.connection-strip').count()==0
  assert page.locator('[data-act="open-fixture-actions"]').count()==0
- navigate('Set up','Services & criteria')
- assert page.get_by_role('heading',name='Services & criteria',exact=True).is_visible()
+ navigate('Set up','Services')
+ assert page.get_by_role('heading',name='Services',exact=True).is_visible()
  assert page.locator('[data-local-key]').count()>=1
  navigate('Results')
  assert page.get_by_role('heading',name='Continue locally',exact=True).is_visible()
@@ -114,7 +114,8 @@ with sync_playwright() as p:
  assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
  page.locator('[data-act="menu"]').first.click()
  page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Set up',exact=True).click()
- assert page.get_by_role('heading',name='Team context',exact=True).count()==1
+ assert page.get_by_role('heading',name='Services',exact=True).count()==1
+ page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Team context',exact=True).click()
  page.get_by_role('combobox',name='Risk profile',exact=True).click()
  assert page.get_by_role('listbox').is_visible()
  page.get_by_role('option',name='Experimental',exact=True).click()

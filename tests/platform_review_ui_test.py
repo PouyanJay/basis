@@ -27,6 +27,7 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  page.reload()
  nav=page.get_by_role('navigation',name='Main navigation')
  nav.get_by_role('button',name='Set up',exact=True).click()
+ page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Team context',exact=True).click()
  page.get_by_role('heading',name='Organization requirements',exact=True).wait_for()
  page.get_by_label('Data retention requirement',exact=True).fill('At most 30 days')
  page.get_by_label('Data retention requirement',exact=True).press('Tab')
@@ -36,7 +37,6 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  out=ROOT/'test-results/platform-review';out.mkdir(parents=True,exist_ok=True)
  page.screenshot(path=str(out/'setup-desktop.png'),full_page=True)
  nav.get_by_role('button',name='Run evaluation',exact=True).click()
- page.get_by_role('tab',name='Run evaluation',exact=True).click()
  assert page.locator('.evaluation-scope').is_visible()
  page.screenshot(path=str(out/'run-desktop.png'),full_page=True)
  nav.get_by_role('button',name='Results',exact=True).click()
@@ -75,6 +75,7 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  # Same-provider selection removes new setup/scope while historical results retain their review.
  page.evaluate('''()=>{let s=JSON.parse(localStorage.getItem('basis-iris-production-v1'));s.platforms.forEach(p=>p.enabled=p.id==='claude');localStorage.setItem('basis-iris-production-v1',JSON.stringify(s))}''')
  page.reload();nav.get_by_role('button',name='Set up',exact=True).click()
+ page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Team context',exact=True).click()
  assert page.get_by_role('heading',name='Organization requirements',exact=True).count()==0
  nav.get_by_role('button',name='Run evaluation',exact=True).click()
  assert page.locator('.evaluation-scope').count()==0

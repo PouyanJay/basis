@@ -45,8 +45,8 @@ with tempfile.TemporaryDirectory() as tmp,patch.object(bridge,'vault',return_val
  page.wait_for_function('document.querySelector("#judge-model").value==="judge-test-v1"')
  out=ROOT/'test-results/judge';out.mkdir(parents=True,exist_ok=True)
  page.screenshot(path=str(out/'settings-desktop.png'),full_page=True)
- nav('Set up','Services & criteria')
- page.get_by_role('tab',name='Requirements',exact=True).click()
+ nav('Set up','Services')
+ page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Team context',exact=True).click()
  page.locator('[data-requirement="retention"]').click()
  page.get_by_role('combobox',name='Status',exact=True).click()
  page.get_by_role('option',name='Verified',exact=True).click()
@@ -59,7 +59,7 @@ with tempfile.TemporaryDirectory() as tmp,patch.object(bridge,'vault',return_val
  page.get_by_text('Review saved.',exact=True).wait_for()
  assert 'Verified' in page.locator('[data-requirement="retention"]').inner_text()
  page.screenshot(path=str(out/'requirements-desktop.png'),full_page=True)
- page.reload();nav('Set up','Services & criteria');page.get_by_role('tab',name='Requirements',exact=True).click()
+ page.reload();nav('Set up','Services');page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Team context',exact=True).click()
  page.locator('[data-requirement="retention"]').click()
  assert page.locator('[name="reviewer"]').input_value()=='Alex'
  assert page.locator('[name="url"]').input_value()=='https://example.com/policy'

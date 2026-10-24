@@ -34,18 +34,18 @@ with sync_playwright() as p:
  def nav(page,label):
   page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Set up',exact=True).click()
   page.get_by_role('navigation',name='Set up sections').get_by_role('button',name=label,exact=True).click()
- nav(page,'Services & criteria')
+ nav(page,'Services')
  for name in ['Cursor','Devin','OpenCode']:page.get_by_role('button',name=f'Remove {name} from evaluation',exact=True).click()
  assert page.get_by_role('combobox',name='Codex model',exact=True).is_disabled()
  page.get_by_label('Codex API key',exact=True).fill('test-only-handoff-openai')
  assert page.locator('[data-config-service="codex"] [data-save-local]').count()==0
  assert 'test-only-handoff-openai' not in page.evaluate('JSON.stringify(localStorage)')
- nav(page,'Tasks')
+ nav(page,'Tasks & Benchmarks')
  page.get_by_role('button',name='Add task',exact=True).click()
  page.locator('.modal [name="name"]').fill('Transferred task')
  page.locator('.modal [name="acceptance"]').fill('Meets acceptance criteria')
  page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
- nav(page,'Services & criteria')
+ nav(page,'Services')
  assert page.locator('[data-config-service="codex"] [data-key-status]').text_content()=='Ready to transfer'
  # An unsaved visible entry also goes with the explicit handoff.
  page.get_by_label('Claude Code API key',exact=True).fill('test-only-handoff-anthropic')
@@ -56,7 +56,7 @@ with sync_playwright() as p:
  assert local is not page
  assert page.url==HOSTED+'/basis/'
  assert not page.is_closed()
- local.get_by_role('heading',name='Services & criteria',exact=True).wait_for()
+ local.get_by_role('heading',name='Services',exact=True).wait_for()
  local.wait_for_function('document.querySelectorAll("[data-key-status].pass").length === 2')
  local.get_by_role('combobox',name='Codex model',exact=True).click()
  local.get_by_role('option',name='Returned model · test-returned-model',exact=True).click()
@@ -66,7 +66,7 @@ with sync_playwright() as p:
  assert 'test-only-handoff' not in page.evaluate('JSON.stringify(localStorage)')
  assert all('test-only-handoff' not in url for url in requests)
  page.get_by_text('Setup transferred. Continue in the local tab.',exact=True).wait_for()
- nav(local,'Tasks');assert local.get_by_text('Transferred task',exact=True).is_visible()
+ nav(local,'Tasks & Benchmarks');assert local.get_by_text('Transferred task',exact=True).is_visible()
  # A second transfer must ask before replacing populated local setup.
  with context.expect_page() as another:page.get_by_role('button',name='Continue locally',exact=True).click()
  replacement=another.value
