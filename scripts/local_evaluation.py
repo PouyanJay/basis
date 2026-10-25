@@ -272,7 +272,7 @@ class EvaluationRunner:
                 self.update()
         return job
 
-    def start(self, plan, consent):
+    def start(self, plan, consent, workspace_id=None, frozen_plan=None):
         if consent is not True:
             raise ValueError('Confirm provider usage and permission to send the selected source and task context.')
         with self.lock:
@@ -319,7 +319,8 @@ class EvaluationRunner:
             if not isinstance(packs, list) or len(packs) > 5:
                 raise ValueError('Choose at most five benchmark packs.')
             plan['benchmarks'] = []
-            for index, path in enumerate(packs):
+            frozen_benchmarks = bool(frozen_plan) and packs == frozen_plan.get('benchmarkPaths', []) and plan.get('integratedBenchmarks', []) == frozen_plan.get('integratedBenchmarks', [])
+            for index, path in enumerate([] if frozen_benchmarks else packs):
                 pack = benchmark_pack(path)
                 if any(p['name'] == pack['name'] for p in plan['benchmarks']):
                     raise ValueError('Use a unique name for each benchmark pack in this run.')
@@ -328,17 +329,29 @@ class EvaluationRunner:
             suites = plan.get('integratedBenchmarks', [])
             if not isinstance(suites, list) or len(suites) > 1 or any(not isinstance(b, dict) or b.get('id') != 'swebench-lite' for b in suites):
                 raise ValueError('Only SWE-bench Lite is currently available for integrated execution.')
-            for suite in suites:
+            for suite in ([] if frozen_benchmarks else suites):
                 pack = self.lite.selection(suite.get('count'))
                 plan['benchmarks'].append({k: v for k, v in pack.items() if k != 'tasks'})
                 tasks.extend({**t, 'instanceId': t['id'], 'sourceKind': 'benchmark', 'suite': pack['name'], 'revision': pack['revision'], 'harness': pack['harness']} for t in pack['tasks'])
+            if frozen_benchmarks:
+                plan['benchmarks'] = frozen_plan.get('benchmarks', [])
+                tasks.extend({**t, '_savedInput':i} for i,t in enumerate(frozen_plan['tasks']) if t.get('sourceKind')=='benchmark')
+            if frozen_plan:
+                for i,task in enumerate(tasks):
+                    if task.get('sourceKind')!='team':continue
+                    for n,previous in enumerate(frozen_plan['tasks']):
+                        if previous.get('sourceKind')=='team' and previous.get('id',n)==task.get('id',i) and all(previous.get(k,'')==task.get(k,'') for k in ('sourcePath','checksPath')):
+                            task['_savedInput']=n;break
             if not 1 <= len(tasks) <= 400:
                 raise ValueError('Define a task in Set up or add a benchmark pack (maximum 400 tasks).')
             if not self.docker_ready():
                 raise ValueError('Start Docker before running the evaluation.')
-            run_id = uuid.uuid4().hex
+            run_id = workspace_id or uuid.uuid4().hex
+            if not re.fullmatch('[a-f0-9]{32}',run_id):raise ValueError('Invalid workspace ID.')
             directory = self.folder / 'evaluations' / run_id
-            directory.mkdir(parents=True, mode=0o700)
+            if workspace_id:
+                if directory.is_symlink() or not (directory/'workspace.json').is_file() or (directory/'result.json').exists():raise ValueError('Run is not an editable draft.')
+            else:directory.mkdir(parents=True, mode=0o700)
             try:
                 for index, task in enumerate(tasks):
                     for field in ('name', 'acceptance'):
@@ -356,16 +369,21 @@ class EvaluationRunner:
                             if ',' in str(source) or source == self.folder.resolve() or source in self.folder.resolve().parents:
                                 raise ValueError('Use a project folder outside the Basis run storage, without commas in its path.')
                     base = directory / 'inputs' / str(index)
-                    task['sourceDigest'] = copy_source(task.get('sourcePath'), base / 'source')
-                    task['checksDigest'] = copy_source(task.get('checksPath'), base / 'checks')
+                    saved = task.pop('_savedInput',None)
+                    snapshot = directory/'clone-inputs'/str(saved) if saved is not None else None
+                    task['sourceDigest'] = copy_source(str(snapshot/'source') if snapshot else task.get('sourcePath'), base / 'source')
+                    task['checksDigest'] = copy_source(str(snapshot/'checks') if snapshot else task.get('checksPath'), base / 'checks')
                     if task.get('grader') == 'swebench-lite':
-                        shutil.copyfile(task['instancePath'], base / 'instance.json')
+                        shutil.copyfile(snapshot/'instance.json' if snapshot else task['instancePath'], base / 'instance.json')
                         task['checksDigest'] = hashlib.sha256((base / 'instance.json').read_bytes()).hexdigest()
-                        task.pop('instancePath')
+                        task.pop('instancePath',None)
                 plan.update(tasks=tasks, services=services, timeoutSeconds=timeout, schemaVersion=1)
                 write_json(directory / 'plan.json', plan)
             except Exception:
-                shutil.rmtree(directory)
+                if workspace_id:
+                    shutil.rmtree(directory/'inputs',ignore_errors=True)
+                    (directory/'plan.json').unlink(missing_ok=True)
+                else:shutil.rmtree(directory)
                 raise
             self.cancel.clear()
             self.job = {'id': run_id, 'status': 'preparing', 'startedAt': time.time(), 'plan': plan,

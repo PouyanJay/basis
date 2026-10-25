@@ -22,6 +22,7 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  browser=p.chromium.launch();page=browser.new_page(viewport={'width':1440,'height':1040});errors=[]
  page.on('pageerror',lambda e:errors.append(str(e)))
  page.goto(f'http://127.0.0.1:{server.server_port}/')
+ page.locator('[data-open-workspace]').first.click()
  page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Results',exact=True).click()
  page.get_by_role('tab',name='Recommendation',exact=True).click()
  page.get_by_role('button',name='Generate recommendation',exact=True).click()

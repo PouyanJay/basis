@@ -25,6 +25,7 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  # Keep a valid full study while changing only selected provider models.
  page.evaluate('''async () => {const {demo}=await import('/core.js');const s=structuredClone(demo);s.platforms.forEach(p=>{p.enabled=['claude','codex'].includes(p.id);p.models=p.id==='claude'?['haiku','sonnet']:p.id==='codex'?['model-a']:[]});localStorage.setItem('basis-iris-production-v1',JSON.stringify(s))}''')
  page.reload()
+ page.get_by_role('button',name='Continue',exact=True).click()
  nav=page.get_by_role('navigation',name='Main navigation')
  nav.get_by_role('button',name='Set up',exact=True).click()
  page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Team context',exact=True).click()
@@ -39,6 +40,8 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  nav.get_by_role('button',name='Run evaluation',exact=True).click()
  assert page.locator('.evaluation-scope').is_visible()
  page.screenshot(path=str(out/'run-desktop.png'),full_page=True)
+ page.get_by_role('button',name='All runs',exact=True).click()
+ page.locator('[data-open-workspace="'+RUN+'"]').first.click()
  nav.get_by_role('button',name='Results',exact=True).click()
  page.get_by_role('tab',name='Organization fit',exact=True).click()
  page.get_by_role('button',name='Research platforms',exact=True).click()
@@ -73,9 +76,11 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  assert page.get_by_text(QUOTE,exact=True).is_visible()
 
  # Same-provider selection removes new setup/scope while historical results retain their review.
- page.evaluate('''()=>{let s=JSON.parse(localStorage.getItem('basis-iris-production-v1'));s.platforms.forEach(p=>p.enabled=p.id==='claude');localStorage.setItem('basis-iris-production-v1',JSON.stringify(s))}''')
- page.reload();nav.get_by_role('button',name='Set up',exact=True).click()
- page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Team context',exact=True).click()
+ page.get_by_role('button',name='All runs',exact=True).click()
+ page.get_by_role('button',name='Continue',exact=True).click()
+ page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Services',exact=True).click()
+ page.get_by_role('button',name='Remove Codex from evaluation',exact=True).click()
+ page.get_by_role('button',name='Continue to team context',exact=True).click()
  assert page.get_by_role('heading',name='Organization requirements',exact=True).count()==0
  nav.get_by_role('button',name='Run evaluation',exact=True).click()
  assert page.locator('.evaluation-scope').count()==0

@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
 HOSTED='https://pouyanjay.github.io'
 LOCAL='http://127.0.0.1:8765'
-keys={};requests=[]
+keys={};requests=[];runs={}
 with sync_playwright() as p:
  browser=p.chromium.launch(headless=True)
  context=browser.new_context(viewport={'width':1440,'height':1000})
@@ -20,6 +20,13 @@ with sync_playwright() as p:
    elif path=='/api/local/status':result={'configured':{name:True for name in keys},'credentialError':'','dockerReady':True,'job':None}
    elif path=='/api/local/models':result={'models':[{'id':'test-returned-model','name':'Returned model'}],'source':'test-only'}
    elif path=='/api/local/credentials':keys[data['secret']]=data['value'];result={'saved':True}
+   elif path=='/api/local/workspace-list':result={'runs':list(runs.values())}
+   elif path=='/api/local/workspace-create':
+    import uuid
+    run={'id':uuid.uuid4().hex,'revision':1,'name':data['setup']['meta']['name'],'setup':data['setup'],'status':'draft','updatedAt':1,'models':2,'services':['Claude Code','Codex']};runs[run['id']]=run;result={'run':run}
+   elif path=='/api/local/workspace-save':
+    run=runs[data['id']];run.update(setup=data['setup'],revision=run['revision']+1);result={'run':run}
+   elif path=='/api/local/workspace-get':result={'run':runs[data['id']]}
    else:result={'evaluations':[],'job':None}
    route.fulfill(json=result);return
   name=path.removeprefix('/basis/').lstrip('/') or 'index.html'
@@ -56,7 +63,7 @@ with sync_playwright() as p:
  assert local is not page
  assert page.url==HOSTED+'/basis/'
  assert not page.is_closed()
- local.get_by_role('heading',name='Services',exact=True).wait_for()
+ local.get_by_label('Run name',exact=True).wait_for()
  local.wait_for_function('document.querySelectorAll("[data-key-status].pass").length === 2')
  local.get_by_role('combobox',name='Codex model',exact=True).click()
  local.get_by_role('option',name='Returned model · test-returned-model',exact=True).click()
@@ -67,11 +74,12 @@ with sync_playwright() as p:
  assert all('test-only-handoff' not in url for url in requests)
  page.get_by_text('Setup transferred. Continue in the local tab.',exact=True).wait_for()
  nav(local,'Tasks & Benchmarks');assert local.get_by_text('Transferred task',exact=True).is_visible()
- # A second transfer must ask before replacing populated local setup.
+ # A second transfer creates a separate run without replacing the first.
  with context.expect_page() as another:page.get_by_role('button',name='Continue locally',exact=True).click()
  replacement=another.value
- replacement.get_by_role('dialog').get_by_role('button',name='Cancel',exact=True).click()
- page.get_by_text('Transfer was not completed. Your setup is still here.',exact=True).wait_for()
+ replacement.get_by_label('Run name',exact=True).wait_for()
+ assert len(runs)==2
+ assert len({r['id'] for r in runs.values()})==2
  assert not errors,errors
  browser.close()
-print('PASS hosted → local handoff: selected services/models/tasks, transient keys, no secrets in storage/URLs, existing setup confirmation, cancellation')
+print('PASS hosted → local handoff: selected services/models/tasks, transient keys, no secrets in storage/URLs, independent drafts on repeated transfer')

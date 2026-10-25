@@ -53,6 +53,7 @@ try:
   browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
   page=browser.new_page(viewport={'width':1440,'height':1000});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   page.goto(f'http://127.0.0.1:{server.server_port}/')
+  page.get_by_role('button',name='New run',exact=True).click()
   def nav(section,label=None):
    page.get_by_role('navigation',name='Main navigation').get_by_role('button',name=section,exact=True).click()
    if label:page.get_by_role('navigation',name=section+' sections').get_by_role('button',name=label,exact=True).click()
@@ -132,7 +133,7 @@ try:
   page.locator('.modal [name="name"]').fill('Team greeting')
   page.locator('.modal [name="acceptance"]').fill('Return hello')
   page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
-  assert page.get_by_role('heading',name='Tasks & Benchmarks',exact=True).is_visible()
+  assert page.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Tasks & Benchmarks',exact=True).get_attribute('aria-current')=='page'
   panel=page.locator('.benchmark-panel')
   assert 'leaderboard' not in panel.inner_text()
   page.evaluate('window.scrollTo(0,0)')
@@ -168,7 +169,7 @@ try:
   prep={'status':'idle'}
   page.route('**/api/local/swebench-status',lambda route:route.fulfill(json={'benchmark':prep}))
   def prepare(route):
-   prep.update(status='checking',count=1,message='Checking this computer',completed=0)
+   prep.update(status='checking',count=1,message='Checking this computer',completed=0,workspaceId=route.request.post_data_json.get('workspaceId'))
    route.fulfill(json={'benchmark':prep})
   page.route('**/api/local/prepare-swebench',prepare)
   page.locator('#swebench-count').fill('1')
@@ -239,7 +240,7 @@ try:
 
   assert page.get_by_role('cell',name='second-model Claude Code',exact=False).count()==2
   assert page.locator('.attempt-row').count()==6
-  assert 'unverified' in page.locator('body').inner_text()
+  assert 'unverified' in page.locator('body').text_content()
   page.locator('.results-benchmark-filter summary').click()
   page.locator('[data-include-suite]').uncheck()
   assert page.locator('.attempt-row').count()==3
@@ -251,6 +252,7 @@ try:
   page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
   page.get_by_text('Human rejected',exact=False).first.wait_for()
   assert runner.snapshot()['plan']['setup']['tasks'][0]['name']=='Team greeting'
+  page.locator('.workspace-saved-setup > summary').click()
   page.get_by_role('tab',name='JSON',exact=True).click()
   assert page.locator('.json-lines').is_visible()
   with page.expect_download() as downloaded:
@@ -303,7 +305,7 @@ try:
   # Completed execution remains green even when models fail checks or time out.
   outcomes=[{**r,'status':'completed','checkPassed':False} for r in finished['results']]
   outcomes[0]={**outcomes[0],'status':'timeout','checkPassed':None}
-  page.locator('h1').click()
+  page.locator('h1:visible').first.click()
   runner.update(status='partial',results=outcomes,total=len(outcomes))
   page.wait_for_timeout(2800)
   assert page.locator('.run-heading h2').inner_text()=='Evaluation complete'
@@ -312,7 +314,7 @@ try:
   runner.update(**finished)
   for status,phase,message in [('preparing','prepare','Downloading agent tools'),('running','agent','Running Claude Code'),('running','check','Checking Claude Code'),('failed','check','Runner failed')]:
    runner.update(status=status,phase=phase,message=message,finishedAt=None if status in ('preparing','running') else time.time(),currentAgent='claude',currentTask=0,results=[])
-   page.locator('h1').click()
+   page.locator('h1:visible').first.click()
    page.wait_for_timeout(2800)
    assert page.locator('#evaluation-progress .run-heading').inner_text().find(message)>=0 or status=='failed'
    if status in ('preparing','running'):
@@ -338,6 +340,7 @@ try:
   touch=browser.new_page(viewport={'width':390,'height':844},has_touch=True,is_mobile=True)
   touch.on('pageerror',lambda e:errors.append(str(e)))
   touch.goto(f'http://127.0.0.1:{server.server_port}/')
+  touch.locator('[data-new-workspace]').tap()
   touch.get_by_role('button',name='Toggle menu',exact=True).tap()
   touch.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Set up',exact=True).tap()
   touch.get_by_role('navigation',name='Set up sections').get_by_role('button',name='Tasks & Benchmarks',exact=True).tap()

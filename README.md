@@ -32,6 +32,14 @@ Basis brings those questions into one study. It connects an engineering profile,
 
 **Current status:** the static application is deployed and browser-tested. Local evaluation execution, saved plans, run history, cancellation, review, and optional benchmark integration are implemented. Automated tests cover the browser/backend workflow and container boundaries. Paid vendor calls have not been validated end to end; imported reports remain unverified evidence.
 
+## Saved run workspaces
+
+The local app opens a Runs library. **New run** creates an autosaved draft; **Clone** copies any run into a separate editable draft. Services, team context, tasks, benchmarks, limits, results, artifacts, and recommendations stay associated with their run. Starting a run freezes its setup. Clone it to change the setup or repeat the same evaluation; no reset is needed.
+
+Each run lives in `~/.local/share/basis/evaluations/<id>/`. Draft setup is stored in `workspace.json`; executions retain `plan.json`, `result.json`, input snapshots, and attempt outputs. Clones reuse the original input snapshots and pinned benchmark selection, never generated attempt files or previous results. Selecting a different task source/checks path replaces that snapshot on the next execution. Existing saved evaluations appear automatically; an existing browser setup is migrated as a draft.
+
+Draft saves use revision checks so another tab cannot silently overwrite them. Browser recovery copies protect unsaved edits. API keys remain in the shared OS credential store and are excluded from saved setup. One coding evaluation runs at a time; you can browse other runs and prepare drafts while it executes.
+
 ## What you can do
 
 ### Cross-provider organization review
@@ -165,7 +173,8 @@ flowchart LR
     Containers --> Reports[Automated check summaries]
     Reports --> Companion
     Companion -->|Automatic progress and results| App
-    App <-->|Study state| Storage[Browser local storage]
+    App <-->|Drafts and saved runs| Companion
+    Companion --> Storage[Per-run folders]
 ```
 
 ## Development

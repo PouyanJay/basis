@@ -72,14 +72,15 @@ class LiteBenchmark:
             self.state.update(values, updatedAt=time.time())
             save(self.statefile, self.state)
 
-    def start(self, count):
+    def start(self, count, workspace_id=None):
         if type(count) is not int or not 1 <= count <= 300:
             raise ValueError('Choose 1–300 SWE-bench Lite tasks.')
         with self.lock:
             if self.state['status'] in ACTIVE or getattr(self, 'worker', None) and self.worker.is_alive():
+                if self.state.get('workspaceId') != workspace_id:raise ValueError('Benchmark preparation is running in another run.')
                 return self.snapshot()
             self.cancel.clear()
-            self.state = {'status': 'checking', 'count': count, 'completed': 0, 'message': 'Checking this computer', 'startedAt': time.time()}
+            self.state = {'status': 'checking', 'workspaceId': workspace_id, 'count': count, 'completed': 0, 'message': 'Checking this computer', 'startedAt': time.time()}
             self.update()
             self.worker = threading.Thread(target=self.prepare, args=(count,), daemon=True)
             self.worker.start()

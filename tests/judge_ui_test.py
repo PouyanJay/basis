@@ -24,6 +24,7 @@ with tempfile.TemporaryDirectory() as tmp,patch.object(bridge,'vault',return_val
  threading.Thread(target=server.serve_forever,daemon=True).start()
  browser=p.chromium.launch();page=browser.new_page(viewport={'width':1440,'height':1000});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  page.goto(f'http://127.0.0.1:{server.server_port}/')
+ page.get_by_role('button',name='New run',exact=True).click()
  def nav(main,sub=None):
     page.get_by_role('navigation',name='Main navigation').get_by_role('button',name=main,exact=True).click()
     if sub:page.get_by_role('navigation',name=main+' sections').get_by_role('button',name=sub,exact=True).click()

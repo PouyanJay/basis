@@ -20,6 +20,7 @@ jobs:
           python -m pip install playwright
           python -m playwright install --with-deps chromium
           python tests/ui_test.py
+          python tests/run_workspaces_ui_test.py
           python tests/local_ui_test.py
           python tests/judge_ui_test.py
           python tests/recommendation_ui_test.py

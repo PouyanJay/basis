@@ -61,6 +61,7 @@ from judge_settings import JudgeSettings
 from evidence_package import build_package
 from recommendations import Recommendations
 from platform_review import PlatformReviews, eligible as review_eligible
+from run_workspaces import RunWorkspaces
 
 class Runner(EvaluationRunner):
     def __init__(self, folder=None):
@@ -68,13 +69,14 @@ class Runner(EvaluationRunner):
         self.judge_settings = JudgeSettings(self.folder, lambda: vault())
         self.recommendations = Recommendations(self, self.judge_settings)
         self.platform_reviews = PlatformReviews(self, self.judge_settings)
+        self.workspaces = RunWorkspaces(self)
 
-    def start(self, plan, consent):
+    def start(self, plan, consent, workspace_id=None, frozen_plan=None):
         if not isinstance(plan,dict):raise ValueError('Invalid evaluation plan.')
         setup=plan.get('setup',{})
         include=review_eligible(setup) and plan.get('platformReview',True) is not False
         if include:self.platform_reviews.validate_start(setup)
-        job=super().start(plan,consent)
+        job=super().start(plan,consent,workspace_id=workspace_id,frozen_plan=frozen_plan)
         if include:
             try:self.platform_reviews.start(job['id'],consent=True)
             except (ValueError,RuntimeError) as error:
@@ -145,6 +147,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except Exception:
                     issue = 'OS credential store unavailable. Install requirements-local.txt and unlock your OS credential store.'
                 self._json(200, {'integratedBenchmarks': True, 'multiModel': True, 'configured': configured, 'credentialError': issue, 'dockerReady': docker_ready(), 'job': self.runner.snapshot()}); return
+            if self.path.startswith('/api/local/workspace-'):
+                manager=self.runner.workspaces
+                if self.path.endswith('-list'):self._json(200,{'runs':manager.listing()});return
+                if self.path.endswith('-get'):self._json(200,{'run':manager.get(item.get('id'))});return
+                if self.path.endswith('-create'):self._json(201,{'run':manager.create(item.get('setup'))});return
+                if self.path.endswith('-save'):self._json(200,{'run':manager.save(item.get('id'),item.get('setup'),item.get('revision'))});return
+                if self.path.endswith('-clone'):self._json(201,{'run':manager.clone(item.get('id'))});return
+                if self.path.endswith('-start'):self._json(202,{'job':manager.start(item.get('id'),item.get('revision'),item.get('consent'))});return
             if self.path == '/api/local/job':
                 self._json(200, {'job': self.runner.snapshot()}); return
             if self.path.startswith('/api/local/judge-'):
@@ -194,16 +204,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {'evaluations': self.runner.history()}); return
             if self.path == '/api/local/stop':
                 job=self.runner.snapshot()
+                if item.get('id') and (not job or item['id']!=job['id']):raise ValueError('This is not the active run.')
                 if job:self.runner.platform_reviews.stop(job['id'])
                 self._json(200, {'job': self.runner.stop()}); return
             if self.path == '/api/local/review':
                 self._json(200, {'job': self.runner.review(item.get('id'), item.get('key'), item.get('review'))}); return
             if self.path == '/api/local/prepare-swebench':
-                self._json(202, {'benchmark': self.runner.lite.start(item.get('count', 5))}); return
+                owner=item.get('workspaceId')
+                if owner and self.runner.workspaces.get(owner)['status']!='draft':raise ValueError('Clone this run before changing benchmarks.')
+                self._json(202, {'benchmark': self.runner.lite.start(item.get('count', 5),workspace_id=owner)}); return
             if self.path == '/api/local/swebench-status':
                 self._json(200, {'benchmark': self.runner.lite.snapshot()}); return
             if self.path == '/api/local/cancel-swebench':
-                self._json(200, {'benchmark': self.runner.lite.stop()}); return
+                with self.runner.lite.lock:
+                    if self.runner.lite.snapshot().get('workspaceId')!=item.get('workspaceId'):raise ValueError('Benchmark preparation belongs to another run.')
+                    self._json(200, {'benchmark': self.runner.lite.stop()}); return
             if self.path == '/api/local/prepare-humaneval':
                 path = prepare_humaneval(self.runner.folder, item.get('count', 5))
                 self._json(200, {'path': path, 'benchmark': benchmark_pack(path)}); return
