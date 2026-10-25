@@ -38,7 +38,7 @@ The local app opens a Runs library. **New run** creates an autosaved draft; **Cl
 
 Each run lives in `~/.local/share/basis/evaluations/<id>/`. Draft setup is stored in `workspace.json`; executions retain `plan.json`, `result.json`, input snapshots, and attempt outputs. Clones reuse the original input snapshots and pinned benchmark selection, never generated attempt files or previous results. Selecting a different task source/checks path replaces that snapshot on the next execution. Existing saved evaluations appear automatically; an existing browser setup is migrated as a draft.
 
-Draft saves use revision checks so another tab cannot silently overwrite them. Browser recovery copies protect unsaved edits. API keys remain in the shared OS credential store and are excluded from saved setup. One coding evaluation runs at a time; you can browse other runs and prepare drafts while it executes.
+Draft saves use revision checks so another tab cannot silently overwrite them. Browser recovery copies protect unsaved edits. API keys remain in the shared OS credential store and are excluded from saved setup. Delete a run from the Runs library to permanently remove its complete folder and saved outputs. Active evaluation, judge, research, or benchmark preparation must finish or stop first. Independent clones, source projects, shared benchmark caches, and credentials are preserved. One coding evaluation runs at a time; you can browse other runs and prepare drafts while it executes.
 
 ## What you can do
 

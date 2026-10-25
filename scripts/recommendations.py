@@ -118,6 +118,7 @@ class Recommendations:
         self.request = request or judge_provider.request
         self.lock = threading.RLock()
         self.worker = None
+        self.active_run = None
         self.cancel = threading.Event()
         # Never automatically repeat a paid call after a companion restart.
         for path in (runner.folder/'evaluations').glob('*/recommendations.json'):
@@ -176,6 +177,7 @@ class Recommendations:
             doc['generations'].append(record)
             self.save(run_id,doc)
             self.cancel.clear()
+            self.active_run = run_id
             self.worker = threading.Thread(target=self.run,args=(run_id,record['id'],key),daemon=True)
             self.worker.start()
             return {'recommendation':copy.deepcopy(record)}

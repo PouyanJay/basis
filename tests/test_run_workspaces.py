@@ -85,3 +85,36 @@ class WorkspaceTests(unittest.TestCase):
    self.assertEqual(state['workspaceId'],first['id'])
    with self.assertRaisesRegex(ValueError,'another run'):self.runner.lite.start(2,workspace_id=second['id'])
    self.assertEqual(self.runner.lite.snapshot()['workspaceId'],first['id'])
+ def test_delete_removes_all_run_files_and_latest_copy_preserves_clone(self):
+  w=self.manager.create(self.setup);self.start(w);self.finish();child=self.manager.clone(w['id'])
+  folder=self.manager.directory(w['id'])
+  for name in ['recommendations.json','platform-review.json','judge-evidence-snapshot.json','attempts/0/artifacts/code.py']:
+   p=folder/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('{}')
+  (folder/'external-link').symlink_to(self.source,target_is_directory=True)
+  self.manager.delete(w['id'])
+  self.assertFalse(folder.exists());self.assertFalse(self.runner.file.exists());self.assertIsNone(self.runner.job)
+  self.assertTrue((self.source/'main.py').exists())
+  self.assertEqual(self.manager.get(child['id'])['status'],'draft')
+  self.start(child);self.finish()
+  self.assertEqual((self.manager.directory(child['id'])/'inputs/0/source/main.py').read_text(),'original = True')
+  with self.assertRaises(ValueError):self.manager.get(w['id'])
+ def test_delete_draft_and_nonlatest_preserves_latest(self):
+  old=self.manager.create(self.setup);self.start(old);self.finish()
+  latest=self.manager.create(self.setup);self.start(latest);self.finish();data=self.runner.file.read_bytes()
+  self.manager.delete(old['id']);self.assertEqual(self.runner.file.read_bytes(),data)
+  draft=self.manager.create(self.setup);self.manager.delete(draft['id'])
+  self.assertEqual([r['id'] for r in self.manager.listing()],[latest['id']])
+ def test_delete_blocks_all_active_work(self):
+  from types import SimpleNamespace
+  import threading
+  w=self.manager.create(self.setup);self.start(w)
+  with self.assertRaises(ValueError):self.manager.delete(w['id'])
+  self.finish()
+  for name in ['recommendations','platform_reviews']:
+   setattr(self.runner,name,SimpleNamespace(lock=threading.RLock(),worker=SimpleNamespace(is_alive=lambda:True),active_run=w['id']))
+   with self.assertRaises(ValueError):self.manager.delete(w['id'])
+   delattr(self.runner,name)
+  self.runner.lite.state={'status':'preparing','workspaceId':w['id']}
+  with self.assertRaises(ValueError):self.manager.delete(w['id'])
+  self.runner.lite.state={'status':'ready','workspaceId':w['id']}
+  self.manager.delete(w['id']);self.assertEqual(self.runner.lite.snapshot()['status'],'idle')

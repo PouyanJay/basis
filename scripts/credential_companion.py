@@ -153,6 +153,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 if self.path.endswith('-get'):self._json(200,{'run':manager.get(item.get('id'))});return
                 if self.path.endswith('-create'):self._json(201,{'run':manager.create(item.get('setup'))});return
                 if self.path.endswith('-save'):self._json(200,{'run':manager.save(item.get('id'),item.get('setup'),item.get('revision'))});return
+                if self.path.endswith('-delete'):self._json(200,manager.delete(item.get('id')));return
                 if self.path.endswith('-clone'):self._json(201,{'run':manager.clone(item.get('id'))});return
                 if self.path.endswith('-start'):self._json(202,{'job':manager.start(item.get('id'),item.get('revision'),item.get('consent'))});return
             if self.path == '/api/local/job':
@@ -210,9 +211,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if self.path == '/api/local/review':
                 self._json(200, {'job': self.runner.review(item.get('id'), item.get('key'), item.get('review'))}); return
             if self.path == '/api/local/prepare-swebench':
-                owner=item.get('workspaceId')
-                if owner and self.runner.workspaces.get(owner)['status']!='draft':raise ValueError('Clone this run before changing benchmarks.')
-                self._json(202, {'benchmark': self.runner.lite.start(item.get('count', 5),workspace_id=owner)}); return
+                with self.runner.lock:
+                    owner=item.get('workspaceId')
+                    if owner and self.runner.workspaces.get(owner)['status']!='draft':raise ValueError('Clone this run before changing benchmarks.')
+                    self._json(202, {'benchmark': self.runner.lite.start(item.get('count', 5),workspace_id=owner)}); return
             if self.path == '/api/local/swebench-status':
                 self._json(200, {'benchmark': self.runner.lite.snapshot()}); return
             if self.path == '/api/local/cancel-swebench':

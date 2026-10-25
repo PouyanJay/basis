@@ -75,6 +75,18 @@ with tempfile.TemporaryDirectory() as tmp,patch.object(bridge,'vault',return_val
  assert runner.workspaces.get(recovered)['name']=='Recovered edits'
  assert runner.workspaces.get(draft)['name']=='Saved by first tab'
  stale.close()
+ page.get_by_role('button',name='All runs',exact=True).click()
+ page.locator(f'[data-delete-workspace="{first}"]').click()
+ page.get_by_role('dialog').get_by_role('button',name='Cancel',exact=True).click()
+ assert (runner.folder/'evaluations'/first).exists()
+ page.locator(f'[data-delete-workspace="{first}"]').click()
+ page.screenshot(path=str(out/'delete-confirmation.png'))
+ page.get_by_role('dialog').get_by_role('button',name='Delete run',exact=True).click()
+ page.locator(f'[data-delete-workspace="{first}"]').wait_for(state='detached')
+ assert not (runner.folder/'evaluations'/first).exists()
+ assert (runner.folder/'evaluations'/second/'result.json').exists()
+ page.reload();page.get_by_role('heading',name='Runs',exact=True).wait_for()
+ assert page.locator(f'[data-open-workspace="{first}"]').count()==0
  assert not errors,errors
- print('PASS durable autosave/reload, locked setup, clone with pinned inputs, two executions without reset, run switching, independent results, mobile, conflicting-tab recovery; no paid calls')
+ print('PASS durable autosave/reload, locked setup, clone with pinned inputs, two executions without reset, run switching, independent results, mobile, conflicting-tab recovery, permanent deletion and cancellation; no paid calls')
  browser.close();server.shutdown()

@@ -1,4 +1,5 @@
 """Local run workspaces. Drafts and executions share an immutable identity/folder."""
+from contextlib import ExitStack
 import copy
 import json
 import re
@@ -113,6 +114,38 @@ class RunWorkspaces:
                 w=self.read(target/'workspace.json');w.update(parentId=run_id,parentName=original['name']);write_json(target/'workspace.json',w)
                 return self.get(child['id'])
             except Exception:shutil.rmtree(target);raise
+    def delete(self,run_id):
+        # Serialize against execution, research, judging, and benchmark preparation starts.
+        with self.lock, ExitStack() as locks:
+            managers=[getattr(self.runner,name,None) for name in ('recommendations','platform_reviews','lite')]
+            for manager in managers:
+                if manager:locks.enter_context(manager.lock)
+            directory=self.directory(run_id)
+            job=self.runner.job
+            if job and job['id']==run_id and (job['status'] in ('preparing','running') or self.runner.process or (getattr(self.runner,'worker',None) and self.runner.worker.is_alive())):
+                raise ValueError('Stop this evaluation and wait for it to finish before deleting it.')
+            for manager in managers[:2]:
+                if manager and getattr(manager,'active_run',None)==run_id and manager.worker and manager.worker.is_alive():
+                    raise ValueError('Wait for this run’s recommendation or research to stop before deleting it.')
+            for filename in ('result.json','recommendations.json','platform-review.json'):
+                path=directory/filename
+                if not path.exists():continue
+                doc=self.read(path);records=[doc] if filename=='result.json' else doc.get('generations',[])+doc.get('calls',[])
+                if any(r.get('status') in ('preparing','running','comparing','writing','stopping','researching') for r in records):
+                    raise ValueError('This run still has active work. Stop it before deleting it.')
+            lite=self.runner.lite;state=lite.snapshot()
+            if state.get('workspaceId')==run_id:
+                if state.get('status') in ('checking','downloading','preparing') or (getattr(lite,'worker',None) and lite.worker.is_alive()):
+                    raise ValueError('Wait for benchmark preparation to stop before deleting this run.')
+                lite.state={'status':'idle'};lite.update()
+                (lite.folder/'preparation.log').unlink(missing_ok=True)
+            # Remove the singleton's duplicate evidence too; never affect another run.
+            if self.runner.file.exists() and self.read(self.runner.file).get('id')==run_id:
+                self.runner.file.unlink()
+            if job and job['id']==run_id:self.runner.job=None
+            shutil.rmtree(directory)
+            return {'deleted':run_id}
+
     def start(self,run_id,revision,consent):
         with self.lock:
             w=self.get(run_id)
