@@ -47,6 +47,8 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  page.get_by_role('button',name='Research platforms',exact=True).click()
  page.get_by_text('Reviewing official sources',exact=True).wait_for()
  page.screenshot(path=str(out/'researching-desktop.png'),full_page=True)
+ # Let initial rendering settle; completion must arrive through the polling loop.
+ page.wait_for_timeout(3000)
  release.set()
  page.get_by_text('Research complete',exact=True).wait_for()
  assert page.locator('.fit-cell .meets').count()==2
