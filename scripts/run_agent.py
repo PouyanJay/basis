@@ -38,7 +38,9 @@ if args.model and args.vendor=='claude': cmd[2:2]=['--model',args.model]
 if args.model and args.vendor=='codex': cmd[2:2]=['-m',args.model]
 start=time.monotonic(); error=''; code=None; timedout=False
 try:
-  r=subprocess.run(cmd,cwd=workspace,timeout=args.timeout,capture_output=True,text=True,check=False)
+  agent_env={**os.environ}
+  if args.vendor=='codex': agent_env['CODEX_API_KEY']=os.environ['OPENAI_API_KEY']
+  r=subprocess.run(cmd,cwd=workspace,timeout=args.timeout,capture_output=True,text=True,check=False,env=agent_env)
   code=r.returncode
   if code: error='Agent exited with nonzero status; check the configured key and model, then retry.'
 except subprocess.TimeoutExpired:
@@ -50,7 +52,7 @@ except FileNotFoundError:
 passed=False;verify_code=None
 if not timedout and code==0:
   try:
-    v=subprocess.run([sys.executable,'-m','unittest','discover','-s',str(pathlib.Path(__file__).resolve().parents[1]/'benchmark-tests'/'agent_task'),'-v'],cwd=workspace,timeout=90,capture_output=True,text=True,env={**{k:v for k,v in os.environ.items() if k not in ('ANTHROPIC_API_KEY','OPENAI_API_KEY','CURSOR_API_KEY')},'PYTHONPATH':str(workspace)})
+    v=subprocess.run([sys.executable,'-m','unittest','discover','-s',str(pathlib.Path(__file__).resolve().parents[1]/'benchmark-tests'/'agent_task'),'-v'],cwd=workspace,timeout=90,capture_output=True,text=True,env={**{k:v for k,v in os.environ.items() if k not in ('ANTHROPIC_API_KEY','OPENAI_API_KEY','CODEX_API_KEY','CURSOR_API_KEY')},'PYTHONPATH':str(workspace)})
     verify_code=v.returncode;passed=v.returncode==0
   except subprocess.TimeoutExpired: error='Verifier timed out.'
 result={'schemaVersion':2,'type':'basis-agent-evaluation','recordKind':'automated-test','candidate':args.vendor,'model':args.model or 'provider-default','task':'agent_task','taskDigest':hashlib.sha256((workspace/'TASK.md').read_bytes()).hexdigest(),'agentExitCode':code,'agentTimedOut':timedout,'verifierExitCode':verify_code,'automatedTestsPass':passed,'accepted':False,'humanReview':'required','elapsedSeconds':round(time.monotonic()-start,2),'timeRecordedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provenance':'CI runner execution; no independent human code review','error':error}

@@ -14,8 +14,10 @@ import credential_companion as bridge
 import model_discovery
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 class TestRunner(Runner):
+ hold=False
  def command(self,*args,**kwargs):return 0
  def container(self,work,checks,args,timeout,key=None,value=None):
+  if self.hold and self.cancel.wait(15):raise InterruptedError()
   time.sleep(.1)
   if key:(work/'solution.py').write_text('answer = 42')
   return 0
@@ -34,7 +36,23 @@ with tempfile.TemporaryDirectory() as tmp,patch.object(bridge,'vault',return_val
  page.get_by_role('button',name='Add task',exact=True).click();page.locator('.modal [name=name]').fill('Calculate shipping');page.locator('.modal [name=acceptance]').fill('Return the correct shipping charge');page.locator('.modal [name=sourcePath]').fill(str(source));page.locator('.modal').get_by_role('button',name='Save',exact=True).click()
  page.get_by_text('Saved',exact=True).wait_for()
  first=page.evaluate("localStorage.getItem('basis-active-run')")
- page.reload();page.get_by_role('heading',name='Calculate shipping',exact=True).wait_for()
+ pending=[]
+ page.route('**/api/local/workspace-get',lambda route:pending.append(route))
+ page.reload(wait_until='domcontentloaded')
+ page.get_by_text('Loading your workspace…',exact=True).wait_for()
+ assert page.get_by_role('navigation',name='Main navigation').count()==0
+ deadline=time.monotonic()+10
+ while not pending and time.monotonic()<deadline:page.wait_for_timeout(50)
+ assert pending
+ for route in pending:route.continue_()
+ page.unroute('**/api/local/workspace-get')
+ page.get_by_role('heading',name='Calculate shipping',exact=True).wait_for()
+ # A connection failure must not fall back to the previous application scene.
+ page.route('**/api/local/workspace-list',lambda route:route.fulfill(status=503,json={'error':'Connection interrupted'}))
+ page.reload();page.get_by_text('Unable to load your runs',exact=True).wait_for()
+ assert page.get_by_role('navigation',name='Main navigation').count()==0
+ page.unroute('**/api/local/workspace-list');page.get_by_role('button',name='Retry',exact=True).click()
+ page.get_by_role('heading',name='Calculate shipping',exact=True).wait_for()
  assert runner.workspaces.get(first)['setup']['tasks'][0]['name']=='Calculate shipping'
  page.get_by_role('button',name='Continue to evaluation',exact=True).click()
  page.locator('#evaluation-consent').check();page.locator('#start-evaluation:not([disabled])').wait_for();page.locator('#start-evaluation').click()
@@ -47,9 +65,22 @@ with tempfile.TemporaryDirectory() as tmp,patch.object(bridge,'vault',return_val
  out=ROOT/'test-results/workspaces';out.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(out/'completed.png'),full_page=True)
  page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Set up',exact=True).click()
  assert page.locator('[data-act="toggle-service"]').first.is_disabled()
- page.get_by_role('button',name='Clone run',exact=True).click();page.get_by_label('Run name',exact=True).wait_for()
+ real_clone=runner.workspaces.clone;copy_release=threading.Event()
+ def slow_clone(run_id):
+  assert copy_release.wait(10)
+  return real_clone(run_id)
+ runner.workspaces.clone=slow_clone
+ page.get_by_role('button',name='Clone run',exact=True).click()
+ page.get_by_role('heading',name='Creating new run',exact=True).wait_for()
+ assert page.get_by_role('dialog').get_by_text('Copying saved inputs…',exact=True).is_visible()
+ page.screenshot(path=str(out/'cloning.png'))
+ copy_release.set();page.get_by_label('Run name',exact=True).wait_for()
+ page.get_by_role('heading',name='Creating new run',exact=True).wait_for(state='detached')
+ runner.workspaces.clone=real_clone
  second=page.evaluate("localStorage.getItem('basis-active-run')");assert second!=first
  assert not (runner.folder/'evaluations'/second/'result.json').exists()
+ assert runner.workspaces.get(second)['setup']['tasks']==runner.workspaces.get(first)['setup']['tasks']
+ assert runner.workspaces.get(second)['setup']['platforms']==runner.workspaces.get(first)['setup']['platforms']
  page.get_by_label('Run name',exact=True).fill('Shipping calculator v2');page.get_by_label('Run name',exact=True).press('Tab')
  page.get_by_text('Saved',exact=True).wait_for();page.screenshot(path=str(out/'draft.png'),full_page=True)
  (source/'original.py').write_text('after = True')
@@ -81,12 +112,40 @@ with tempfile.TemporaryDirectory() as tmp,patch.object(bridge,'vault',return_val
  assert (runner.folder/'evaluations'/first).exists()
  page.locator(f'[data-delete-workspace="{first}"]').click()
  page.screenshot(path=str(out/'delete-confirmation.png'))
+ real_delete=runner.workspaces.delete;delete_release=threading.Event()
+ def slow_delete(run_id):
+  assert delete_release.wait(10)
+  return real_delete(run_id)
+ runner.workspaces.delete=slow_delete
  page.get_by_role('dialog').get_by_role('button',name='Delete run',exact=True).click()
+ page.get_by_role('heading',name='Deleting run',exact=True).wait_for()
+ assert page.get_by_text('Removing saved files…',exact=True).is_visible()
+ page.keyboard.press('Escape');assert page.get_by_role('heading',name='Deleting run',exact=True).is_visible()
+ page.screenshot(path=str(out/'deleting.png'))
+ delete_release.set()
+ page.get_by_role('heading',name='Deleting run',exact=True).wait_for(state='detached')
+ runner.workspaces.delete=real_delete
  page.locator(f'[data-delete-workspace="{first}"]').wait_for(state='detached')
  assert not (runner.folder/'evaluations'/first).exists()
  assert (runner.folder/'evaluations'/second/'result.json').exists()
  page.reload();page.get_by_role('heading',name='Runs',exact=True).wait_for()
  assert page.locator(f'[data-open-workspace="{first}"]').count()==0
+ # Abort is reachable from Results and the library, not only the execution footer.
+ page.locator(f'[data-open-workspace="{second}"]').first.click()
+ page.get_by_role('button',name='Clone run',exact=True).click();page.get_by_label('Run name',exact=True).wait_for()
+ stopped_id=page.evaluate("localStorage.getItem('basis-active-run')");runner.hold=True
+ page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Run evaluation',exact=True).click()
+ page.locator('#evaluation-consent').check();page.locator('#start-evaluation:not([disabled])').wait_for();page.locator('#start-evaluation').click()
+ page.get_by_role('button',name='Abort run',exact=True).wait_for()
+ page.get_by_role('navigation',name='Main navigation').get_by_role('button',name='Results',exact=True).click()
+ assert page.get_by_role('button',name='Abort run',exact=True).is_visible()
+ page.screenshot(path=str(out/'abort-results.png'))
+ page.get_by_role('button',name='All runs',exact=True).click()
+ page.locator(f'[data-stop-workspace="{stopped_id}"]').click()
+ page.locator('.runs-table .workspace-status.stopped').wait_for()
+ runner.worker.join(timeout=5);assert not runner.worker.is_alive()
+ assert runner.workspaces.get(stopped_id)['status']=='stopped'
+ assert (runner.folder/'evaluations'/second/'result.json').exists()
  assert not errors,errors
  print('PASS durable autosave/reload, locked setup, clone with pinned inputs, two executions without reset, run switching, independent results, mobile, conflicting-tab recovery, permanent deletion and cancellation; no paid calls')
  browser.close();server.shutdown()

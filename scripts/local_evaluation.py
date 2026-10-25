@@ -509,14 +509,16 @@ class EvaluationRunner:
         name = 'basis-' + uuid.uuid4().hex
         self.update(container=name)
         uid, gid = (os.getuid(), os.getgid()) if hasattr(os, 'getuid') else (1000, 1000)
-        env = {k: v for k, v in os.environ.items() if k not in self.allowed}
+        env = {k: v for k, v in os.environ.items() if k not in self.allowed and k != 'CODEX_API_KEY'}
         command = ['docker', 'run', '--rm', '--name', name, '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges',
                    '--pids-limit=256', '--memory=2g', '--cpus=2', '--user', f'{uid}:{gid}',
                    '--tmpfs', '/tmp:rw,nosuid,size=256m', '--tmpfs', f'/home/node:rw,nosuid,size=256m,uid={uid},gid={gid}',
                    '--mount', f'type=bind,source={work},target=/work']
         if key:
-            env[key] = value
-            command += ['-e', key]
+            # Codex exec reads CODEX_API_KEY; catalog discovery uses OPENAI_API_KEY.
+            container_key = 'CODEX_API_KEY' if args[:2] == ['agent', 'codex'] else key
+            env[container_key] = value
+            command += ['-e', container_key]
         else:
             command += ['--network=none', '--mount', f'type=bind,source={checks},target=/checks,readonly']
         command += [self.image, *args]

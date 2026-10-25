@@ -160,6 +160,9 @@ class EvaluationTests(unittest.TestCase):
         self.assertNotIn('target=/checks', ' '.join(agent[0]))
         self.assertIn('target=/checks,readonly',' '.join(verifier[0]));self.assertIn('--network=none',verifier[0])
         self.assertNotIn('OPENAI_API_KEY',verifier[1][1])
+        self.assertIn('CODEX_API_KEY',agent[0]);self.assertNotIn('OPENAI_API_KEY',agent[0])
+        self.assertEqual(agent[1][1]['CODEX_API_KEY'],'test-secret-never-real')
+        self.assertNotIn('CODEX_API_KEY',verifier[0]);self.assertNotIn('CODEX_API_KEY',verifier[1][1])
     def test_failed_usage_survives_history_restart_and_ignores_grader_output(self):
         self.plan['setup']['platforms'][0].update(id='claude',name='Claude Code')
         self.start_paused()
