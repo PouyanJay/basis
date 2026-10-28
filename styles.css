@@ -1055,3 +1055,7 @@ textarea:focus, select:focus,
 .clone-progress[open]{display:flex;align-items:center;gap:20px;padding:28px;max-width:420px}.clone-progress h2{font-size:18px;margin:0 0 7px}.clone-progress p{font-size:13px;color:var(--soft);margin:0}.clone-spinner{width:24px;height:24px;flex-shrink:0;border:2px solid var(--line);border-top-color:var(--violet);border-radius:50%;animation:phase-spin 1s linear infinite}@media(prefers-reduced-motion:reduce){.clone-spinner{animation:none}}
 
 .startup-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;color:var(--soft);font-size:14px}.startup-screen p{margin:0;max-width:420px;text-align:center;padding:0 20px}.startup-screen .clone-spinner{width:18px;height:18px}
+
+.research-topic>span{min-width:0}.research-topic .research-source-error{display:block;margin:6px 0 0;font-size:11px;line-height:1.5;overflow-wrap:anywhere}.research-topic>small{flex-shrink:0}.fit-badge.unavailable{color:#c9a16e}
+
+.research-source-error a{display:flex;align-items:center;gap:4px;margin-top:5px;color:var(--soft);text-underline-offset:3px}

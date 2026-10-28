@@ -86,6 +86,19 @@ class EvaluationTests(unittest.TestCase):
         self.assertIn('Tool: Read',output)
         self.assertIn('Public update',output)
 
+    def test_codex_structured_error_is_redacted_and_saved_with_attempt(self):
+        self.start_paused()
+        def failed(*args):
+            self.runner.output(json.dumps({'type':'error','message':'Quota exceeded. test-secret-never-real','private':'DO NOT SAVE'}))
+            self.runner.output(json.dumps({'type':'turn.failed','error':{'message':'Quota exceeded. test-secret-never-real','private':'DO NOT SAVE'}}))
+            return 1
+        with patch.object(self.runner,'command',return_value=0),patch.object(self.runner,'container',side_effect=failed):
+            self.runner.execute([('codex','test-model','OPENAI_API_KEY','test-secret-never-real')])
+        job=self.runner.snapshot();self.assertEqual(job['results'][0]['error'],'Codex: Quota exceeded. [REDACTED]')
+        self.assertIn('Quota exceeded',json.dumps(job['activity']))
+        self.assertNotIn('test-secret-never-real',self.runner.file.read_text())
+        self.assertNotIn('DO NOT SAVE',self.runner.file.read_text())
+
     def test_multiple_models_are_isolated_and_reviewed_independently(self):
         self.plan['setup']['platforms'][0]['models']=['model-a','model-b']
         job=self.start_paused()

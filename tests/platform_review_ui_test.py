@@ -77,6 +77,29 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
  assert page.get_by_role('tab',name='Organization fit',exact=True).get_attribute('aria-selected')=='true'
  assert page.get_by_text(QUOTE,exact=True).is_visible()
 
+ # Blocked sources expose a human-review link without inventing verification.
+ d=manager.document(RUN)
+ unit=d['generations'][-1]['units'][1]
+ unit.update(status='unavailable',findings={},error='Official site blocks automated access (HTTP 403).',sourceErrors=[{'url':'https://openai.com/policies/services-agreement/','error':'Official site blocks automated access (HTTP 403).','retryable':False}])
+ d['generations'][-1]['status']='partial';manager.save(RUN,d)
+ page.reload()
+ nav.get_by_role('button',name='Results',exact=True).click()
+ page.get_by_role('tab',name='Organization fit',exact=True).click()
+ page.get_by_role('button',name='Check sources again',exact=True).wait_for()
+ page.locator('.fit-cell').nth(1).click()
+ source=page.get_by_role('link',name='Open official source')
+ assert source.get_attribute('href')=='https://openai.com/policies/services-agreement/'
+ assert source.get_attribute('target')=='_blank'
+ assert page.locator('.fit-detail').get_by_text('Evidence unavailable',exact=True).is_visible()
+ page.screenshot(path=str(out/'unavailable-source-desktop.png'),full_page=True)
+ nav.get_by_role('button',name='Run evaluation',exact=True).click()
+ page.locator('.platform-run').get_by_text('Evidence unavailable',exact=True).wait_for()
+ assert page.locator('.platform-run').get_by_role('link',name='Open official source').is_visible()
+ page.screenshot(path=str(out/'unavailable-run-desktop.png'),full_page=True)
+ page.set_viewport_size({'width':390,'height':844})
+ assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+ page.screenshot(path=str(out/'unavailable-run-mobile.png'),full_page=True)
+ page.set_viewport_size({'width':1440,'height':1000})
  # Same-provider selection removes new setup/scope while historical results retain their review.
  page.get_by_role('button',name='All runs',exact=True).click()
  page.get_by_role('button',name='Continue',exact=True).click()

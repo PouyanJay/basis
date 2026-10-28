@@ -35,7 +35,7 @@ DEFAULTS = [
  ('support','Support coverage','support','Specify required support coverage','preferred'),
  ('releases','Release policy','releases','Documented releases and deprecations','preferred')]
 HOSTS = {
- 'openai': {'developers.openai.com','platform.openai.com','learn.chatgpt.com','openai.com','help.openai.com','chatgpt.com'},
+ 'openai': {'developers.openai.com','platform.openai.com','learn.chatgpt.com','cdn.openai.com','openai.com','help.openai.com','chatgpt.com'},
  'anthropic': {'code.claude.com','docs.anthropic.com','platform.claude.com','www.anthropic.com','anthropic.com','claude.com','support.claude.com','privacy.claude.com','trust.anthropic.com'},
  'cursor': {'cursor.com','www.cursor.com','docs.cursor.com'},
  'opencode': {'opencode.ai'}}
@@ -95,6 +95,24 @@ def requirements(setup):
         seen.add(row['id']);out.append({k:row[k] for k in ('id','name','topic','condition','priority')})
     return out
 
+# Publisher-provided alternative, linked by the canonical agreement page.
+SOURCE_FALLBACKS = {
+    'https://openai.com/policies/services-agreement/': ['https://cdn.openai.com/osa/openai-services-agreement.pdf'],
+}
+MAX_DOCUMENT_BYTES = 8_000_000
+
+class SourceUnavailable(ValueError):
+    pass
+
+def source_failure(error):
+    if isinstance(error, urllib.error.HTTPError):
+        if error.code in (401, 403): return 'Official site blocks automated access (HTTP %s).' % error.code, False
+        if error.code in (404, 410): return 'Official page is no longer available (HTTP %s).' % error.code, False
+        return 'Official site returned HTTP %s.' % error.code, True
+    if isinstance(error, SourceUnavailable): return str(error), False
+    if isinstance(error, ValueError): return str(error), False
+    return 'Official source could not be reached. Try again later.', True
+
 def atomic(path, value):
     from local_evaluation import write_json
     write_json(path,value)
@@ -135,8 +153,8 @@ def fetch_document(url, hosts):
     opener=urllib.request.build_opener(OfficialRedirect(hosts))
     req=urllib.request.Request(url,headers={'User-Agent':'BasisEvidence/1.0','Accept':'text/html,text/plain,text/markdown,application/pdf'})
     with opener.open(req,timeout=25) as response:
-        final=checked_url(response.url,hosts); raw=response.read(3_000_001);mime=response.headers.get_content_type()
-    if len(raw)>3_000_000: raise ValueError('Source exceeds the document size limit.')
+        final=checked_url(response.url,hosts); raw=response.read(MAX_DOCUMENT_BYTES+1);mime=response.headers.get_content_type()
+    if len(raw)>MAX_DOCUMENT_BYTES: raise SourceUnavailable('Official document exceeds the 8 MB download limit.')
     links=[]
     if mime=='application/pdf':
         import io
@@ -146,9 +164,9 @@ def fetch_document(url, hosts):
         parser=DocumentParser();parser.feed(raw.decode('utf-8',errors='replace'));text=''.join(parser.text);links=parser.links
     elif mime.startswith('text/'):text=raw.decode('utf-8',errors='replace')
     else:raise ValueError('Unsupported official document format.')
-    text='\n'.join(' '.join(line.split()) for line in text.splitlines() if line.strip())[:180000]
+    text='\n'.join(' '.join(line.split()) for line in text.splitlines() if line.strip())
     if len(text)<200 or ('enable javascript' in text[:1000].lower() and len(text)<2000):
-        raise ValueError('Official page requires interactive access; public evidence unavailable.')
+        raise SourceUnavailable('Official page requires interactive access; public evidence unavailable.')
     return {'url':final,'requestedUrl':requested,'retrievedAt':time.time(),'sha256':hashlib.sha256(text.encode()).hexdigest(),'text':text,'links':links,'format':mime}
 
 def passages(document, query):
@@ -240,7 +258,19 @@ class PlatformReviews:
         if path.exists() and not path.is_symlink() and not refresh:
             doc=json.loads(path.read_text())
             if time.time()-doc['retrievedAt']<86400:return doc
-        doc=self.fetch(url,hosts);atomic(path,doc);return doc
+        try:
+            doc=self.fetch(url,hosts)
+        except Exception:
+            alternatives=SOURCE_FALLBACKS.get(url,[])
+            if not alternatives:raise
+            for alternative in alternatives:
+                try:
+                    doc=self.fetch(alternative,hosts)
+                    doc['requestedUrl']=url
+                    break
+                except Exception:
+                    if alternative==alternatives[-1]:raise
+        atomic(path,doc);return doc
     def run(self,run_id,key,refresh):
         try:
             g=self.document(run_id)['generations'][-1]
@@ -258,7 +288,9 @@ class PlatformReviews:
                         if self.cancel.is_set():break
                         try:
                             doc=self.source(url,hosts,refresh);sources.append({**doc,'id':'S'+str(len(sources)+1),'passages':passages(doc,query)})
-                        except Exception:errors.append({'url':url,'error':'Official source unavailable'})
+                        except Exception as error:
+                            message,retryable=source_failure(error)
+                            errors.append({'url':url,'error':message,'retryable':retryable})
                     if sources and not self.cancel.is_set():
                         words=set(re.findall('[a-z]{4,}',query.lower()));links=[]
                         for doc in sources:
@@ -273,7 +305,10 @@ class PlatformReviews:
                                 doc=self.source(sorted(links,reverse=True)[0][1],hosts,refresh);sources.append({**doc,'id':'S'+str(len(sources)+1),'passages':passages(doc,query)})
                             except Exception:pass
                     if self.cancel.is_set():break
-                    if not sources:raise ValueError('Official sources unavailable. Retry research.')
+                    if not sources:
+                        message=' '.join(dict.fromkeys(e['error'] for e in errors)) or 'No official sources are configured for this topic.'
+                        if not any(e['retryable'] for e in errors):raise SourceUnavailable(message)
+                        raise RuntimeError(message)
                     schema=assessment_schema(rows)
                     payload={'configuration':c,'requirements':rows,'organization':json.loads((self.directory(run_id)/'plan.json').read_text()).get('setup',{}).get('org',{}), 'sources':[{k:s[k] for k in ('id','url','retrievedAt','passages')} for s in sources]}
                     call={'id':uuid.uuid4().hex,'generationId':g['id'],'unit':unit['id'],'status':'running','startedAt':time.time(),'usage':{}}
@@ -299,7 +334,7 @@ class PlatformReviews:
                 except Exception as error:
                     message=str(error) if isinstance(error,(ValueError,RuntimeError)) else 'Research request failed. Retry this topic.'
                     if call:call.update(status='failed',error=message)
-                    self.mutate(run_id,lambda d:d['generations'][-1]['units'][index].update(status='failed',error=message,sources=sources,sourceErrors=errors))
+                    self.mutate(run_id,lambda d:d['generations'][-1]['units'][index].update(status='unavailable' if isinstance(error,SourceUnavailable) else 'failed',error=message,sources=sources,sourceErrors=errors))
                 finally:
                     if call:
                         call['finishedAt']=time.time()

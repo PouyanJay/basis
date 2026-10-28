@@ -118,3 +118,54 @@ class PlatformReviewTests(unittest.TestCase):
             job['plan']['setup']['platforms'][1]['enabled']=False
             (runner.folder/'evaluations'/RUN/'result.json').write_text(json.dumps(job))
             with self.assertRaises(ValueError):m.start(RUN,True)
+
+class SourceRecoveryTests(unittest.TestCase):
+    def test_large_html_retains_late_evidence_and_bounds_judge_excerpt(self):
+        import io
+        from email.message import Message
+        from unittest.mock import Mock
+        from platform_review import fetch_document, MAX_DOCUMENT_BYTES, SourceUnavailable
+        raw=('<script>'+('x'*3_100_000)+'</script><p>'+('context '*25000)+'</p><p>Deprecation policy: 90 days notice.</p>').encode()
+        def response(body):
+            r=io.BytesIO(body);r.url='https://openai.com/test';r.headers=Message();r.headers['Content-Type']='text/html';return r
+        with patch('platform_review.checked_url',side_effect=lambda u,h:u),patch('platform_review.urllib.request.build_opener') as opener:
+            opener.return_value.open.return_value=response(raw)
+            doc=fetch_document('https://openai.com/test',{'openai.com'})
+            self.assertIn('Deprecation policy: 90 days notice.',doc['text'])
+            excerpt=passages(doc,'deprecation notice')
+            self.assertLessEqual(len(excerpt),14020)
+            opener.return_value.open.return_value=response(b'x'*(MAX_DOCUMENT_BYTES+1))
+            with self.assertRaises(SourceUnavailable):fetch_document('https://openai.com/test',{'openai.com'})
+
+    def test_official_pdf_fallback_preserves_provenance(self):
+        import urllib.error
+        from platform_review import HOSTS
+        with tempfile.TemporaryDirectory() as tmp:
+            runner,m,job=review_fixture(tmp);seen=[]
+            def fetch(url,hosts):
+                seen.append(url)
+                if url.endswith('.pdf'):return document(url,hosts)
+                raise urllib.error.HTTPError(url,403,'Forbidden',{},None)
+            m.fetch=fetch
+            canonical='https://openai.com/policies/services-agreement/'
+            doc=m.source(canonical,HOSTS['openai'],False)
+            self.assertEqual(doc['requestedUrl'],canonical)
+            self.assertEqual(doc['url'],'https://cdn.openai.com/osa/openai-services-agreement.pdf')
+            self.assertEqual(m.source(canonical,HOSTS['openai'],False)['url'],doc['url'])
+
+    def test_permanent_source_failure_and_recovery_reuse_completed_topics(self):
+        import urllib.error
+        with tempfile.TemporaryDirectory() as tmp:
+            runner,m,job=review_fixture(tmp)
+            def fetch(url,hosts):
+                if 'openai' in url:raise urllib.error.HTTPError(url,403,'Forbidden',{},None)
+                return document(url,hosts)
+            m.fetch=fetch;m.start(RUN,True);m.worker.join(5)
+            result=m.status(RUN)
+            self.assertEqual([u['status'] for u in result['review']['units']],['completed','unavailable'])
+            self.assertIn('403',result['review']['units'][1]['error'])
+            self.assertFalse(result['review']['units'][1]['findings'])
+            self.assertEqual(len(result['calls']),1)
+            m.fetch=document;m.start(RUN,True);m.worker.join(5)
+            self.assertEqual(m.status(RUN)['review']['status'],'completed')
+            self.assertEqual(len(m.status(RUN)['calls']),2)

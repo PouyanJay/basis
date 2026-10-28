@@ -396,6 +396,7 @@ class EvaluationRunner:
             return self.snapshot()
 
     def output(self, line):
+        agent_error = False
         if getattr(self, "_usage", None) and self.job.get("phase") == "agent":
             try:
                 self._usage.consume(json.loads(line))
@@ -427,7 +428,12 @@ class EvaluationRunner:
                 event = json.loads(line)
                 if self._usage.agent == 'codex':
                     item = event.get('item') or {}
-                    line = str(item.get('text', '')) if item.get('type') == 'agent_message' else 'Agent turn finished' if event.get('type') == 'turn.completed' else ''
+                    if event.get('type') in ('error','turn.failed'):
+                        message=event.get('message') if event.get('type')=='error' else (event.get('error') or {}).get('message')
+                        line='Codex: '+message if isinstance(message,str) else ''
+                        agent_error=bool(line)
+                    else:
+                        line = str(item.get('text', '')) if item.get('type') == 'agent_message' else 'Agent turn finished' if event.get('type') == 'turn.completed' else ''
                 else:
                     line = str((event.get('part') or {}).get('text', '')) if event.get('type') == 'text' else ''
             except (ValueError, TypeError, AttributeError):
@@ -442,6 +448,7 @@ class EvaluationRunner:
         line = ''.join(c for c in line if c >= ' ' or c == '\t')
         if not line.strip():
             return
+        if agent_error:self._agent_error=line[:2000]
         with self.lock:
             entry = {'time': time.time(), 'stream': getattr(self, '_stream', 'setup'), 'text': line[:2000]}
             activity = self.job.setdefault('activity', [])
@@ -608,6 +615,7 @@ class EvaluationRunner:
                     # Pass the prompt as an argument, never a file that an agent can replace before launch.
                     self._stream = candidate_id
                     self._usage = UsageTracker(agent)
+                    self._agent_error = None
                     self.output(f"Starting task: {task['name']}")
                     self.update(status='running', phase='agent', currentAgent=agent, currentCandidate=candidate_id, currentTask=task['index'], message=f"Running {agent} · {model or 'default'}: {task['name']}")
                     started = time.time()
@@ -619,6 +627,7 @@ class EvaluationRunner:
                             self.prepare_patch(work)
                         code = self.container(work, checks, ['agent', agent, model, json.dumps(prompt)], plan['timeoutSeconds'], key, value)
                         result.update(status='completed' if code == 0 else 'error', agentExitCode=code)
+                        if code and self._agent_error:result['error']=self._agent_error
                         if code == 0 and task.get('grader') == 'swebench-lite':
                             self.update(phase='check', message=f"Grading {agent} · {model}: {task['name']}")
                             result.update(self.grade_lite(task, work, plan['timeoutSeconds']))
